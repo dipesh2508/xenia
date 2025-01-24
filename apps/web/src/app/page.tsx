@@ -33,7 +33,7 @@ export default function Home() {
         />
         <ol>
           <li>
-            Get started by editing <code>apps/web/app/page.tsx</code>
+            Get started by editing <code>apps/web/src/app/page.tsx</code>
           </li>
           <li>Save and see your changes instantly.</li>
         </ol>
@@ -55,7 +55,7 @@ export default function Home() {
             Deploy now
           </a>
           <a
-            href="https://turbo.build/repo/docs?utm_source"
+            href="https://turbo.build/repo/web?utm_source"
             target="_blank"
             rel="noopener noreferrer"
             className={styles.secondary}
