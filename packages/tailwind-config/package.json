@@ -1,0 +1,9 @@
+{
+    "name": "@repo/tailwind-config",
+    "version": "1.0.0",
+    "main": "tailwind.config.ts",
+    "type": "module",
+    "publishConfig": {
+      "access": "public"
+    }
+}

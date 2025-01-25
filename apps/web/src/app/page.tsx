@@ -31,6 +31,10 @@ export default function Home() {
           height={38}
           priority
         />
+
+        <div className="size-64 bg-red-500 text-white p-4">
+          test div
+        </div>
         <ol>
           <li>
             Get started by editing <code>apps/web/src/app/page.tsx</code>
