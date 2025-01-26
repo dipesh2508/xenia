@@ -1,6 +1,6 @@
 'use client'
 import { Button } from "@repo/ui/components/ui/button";
-import { Card, CardTitle, CardContent } from "@repo/ui/components/ui/card";
+import { Card } from "@repo/ui/components/ui/card";
 import React from 'react'
 
 const page = () => {
@@ -10,13 +10,12 @@ const page = () => {
         Click Me
       </Button>
 
+      <div className="bg-red-200 p-4">
+        hello box
+      </div>
+
       <Card className="w-64 shadow-2xl">
-        <CardTitle>
-          Card Title
-        </CardTitle>
-        <CardContent>
-          Card Content
-        </CardContent>
+        Card content
       </Card>
     </div>
   )
