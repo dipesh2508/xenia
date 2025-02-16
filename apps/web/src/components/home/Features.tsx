@@ -26,7 +26,7 @@ const featArray = [
 const Features = () => {
   return (
     <div className="mx-36 my-20">
-      <h2 className="text-4xl text-center font-semibold mb-14">
+      <h2 className="text-4xl text-center font-bold mb-14">
         Features for better experience
       </h2>
 

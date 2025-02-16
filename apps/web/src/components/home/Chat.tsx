@@ -9,7 +9,7 @@ const Chat = () => {
         src={seamlessChat}
         alt="Chat Seamlessly"
         loading="lazy"
-        height={450}
+        height={410}
         className="rounded-lg"
       />
 
@@ -21,9 +21,9 @@ const Chat = () => {
         <p className="text-[##383A47] text-xl">
           Create and join communities tailored to your passions. Experience
           seamless communication with real-time messaging, enabling dynamic
-          discussions and and organize conversations with ease using dedicated
-          channels. Discover a vibrant ecosystem of communities and connect with
-          people who share your interests.
+          discussions and organize conversations using dedicated channels.
+          Discover a vibrant ecosystem of communities and connect with people
+          who share your interests.
         </p>
       </div>
     </div>
