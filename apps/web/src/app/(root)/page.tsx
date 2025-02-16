@@ -3,6 +3,7 @@ import Hero from "../../components/home/Hero";
 import Chat from "@/components/home/Chat";
 import PdfShare from "@/components/home/PdfShare";
 import Whiteboard from "@/components/home/Whiteboard";
+import Cta from "@/components/home/Cta";
 
 export default function Home() {
   return (
@@ -25,6 +26,10 @@ export default function Home() {
 
       <section className="lazy-section">
         <Whiteboard />
+      </section>
+
+      <section className="lazy-section">
+        <Cta />
       </section>
     </main>
   );
