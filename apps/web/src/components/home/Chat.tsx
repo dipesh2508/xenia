@@ -1,7 +1,6 @@
 import Image from "next/image";
 import React from "react";
 import seamlessChat from "@/assets/Chat.png";
-import { V2 } from "@/lib/fonts";
 
 const Chat = () => {
   return (

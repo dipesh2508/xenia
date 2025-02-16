@@ -1,6 +1,7 @@
 import Features from "@/components/home/Features";
 import Hero from "../../components/home/Hero";
 import Chat from "@/components/home/Chat";
+import PdfShare from "@/components/home/PdfShare";
 
 export default function Home() {
   return (
@@ -17,13 +18,9 @@ export default function Home() {
         <Chat />
       </section>
 
-      {/* <section className="lazy-section">
-            <About />
-          </section>
-          
-          <section className="lazy-section">
-            <Contact />
-          </section> */}
+      <section className="lazy-section">
+        <PdfShare />
+      </section>
     </main>
   );
 }
