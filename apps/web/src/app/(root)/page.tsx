@@ -1,5 +1,6 @@
 import Features from "@/components/home/Features";
 import Hero from "../../components/home/Hero";
+import Chat from "@/components/home/Chat";
 
 export default function Home() {
   return (
@@ -12,11 +13,11 @@ export default function Home() {
         <Features />
       </section>
 
+      <section className="lazy-section">
+        <Chat />
+      </section>
+
       {/* <section className="lazy-section">
-            <CTA />
-          </section>
-          
-          <section className="lazy-section">
             <About />
           </section>
           

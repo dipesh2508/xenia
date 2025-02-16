@@ -18,8 +18,7 @@ const featArray = [
   },
   {
     title: "Enhance Collaboration",
-    content:
-      "Communicate, share, and brainstorm effortlessly with your community.",
+    content: "Connect, share, and brainstorm easily with your community.",
     icon: <FaCircleCheck className="text-[#5B1A1C] text-xl" />,
   },
 ];
