@@ -2,6 +2,7 @@ import Features from "@/components/home/Features";
 import Hero from "../../components/home/Hero";
 import Chat from "@/components/home/Chat";
 import PdfShare from "@/components/home/PdfShare";
+import Whiteboard from "@/components/home/Whiteboard";
 
 export default function Home() {
   return (
@@ -20,6 +21,10 @@ export default function Home() {
 
       <section className="lazy-section">
         <PdfShare />
+      </section>
+
+      <section className="lazy-section">
+        <Whiteboard />
       </section>
     </main>
   );

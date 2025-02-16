@@ -3,7 +3,7 @@ import React from "react";
 import EasyShare from "@/assets/PdfShare.png";
 import { Button } from "@repo/ui/components/ui/button";
 
-const Chat = () => {
+const PdfShare = () => {
   return (
     <div className="flex justify-between items-center gap-20 py-24 px-36">
       <div className="space-y-8 w-1/2">
@@ -29,4 +29,4 @@ const Chat = () => {
   );
 };
 
-export default Chat;
+export default PdfShare;
