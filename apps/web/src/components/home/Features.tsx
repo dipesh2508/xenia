@@ -25,16 +25,16 @@ const featArray = [
 
 const Features = () => {
   return (
-    <div className="mx-36 my-20">
+    <div className="my-20 lg:mx-36 mx-6 md:mx-10" id="features">
       <h2 className="text-4xl text-center font-bold mb-14">
         Features for better experience
       </h2>
 
-      <div className="grid grid-cols-3 gap-10">
+      <div className="grid lg:grid-cols-3 grid-cols-1 md:grid-cols-2 gap-10 ">
         {featArray.map((feat, idx) => (
           <Card
             key={idx}
-            className="flex items-center pl-5 border-none gap-4 shadow-none"
+            className="flex items-center pl-5 border-none gap-4 shadow-none lg:flex-row md:flex-col flex-row md:text-center lg:text-left text-left"
           >
             <div className="rounded-full bg-[#913B3E]/20 p-4">{feat.icon}</div>
             <div className="flex flex-col gap-2">

@@ -5,13 +5,15 @@ import { V2 } from "@/lib/fonts";
 
 const Hero = () => {
   return (
-    <section className="overflow-hidden flex justify-between items-center mx-36 gap-20">
-      <div className="space-y-11 w-1/2">
-        <h2 className={`${V2.className} font-semibold text-6xl tracking-wide`}>
+    <section className="overflow-hidden flex justify-between items-center lg:mx-36 md:mx-10 mx-6 gap-20 lg:flex-row flex-col mt-10 lg:mt-0">
+      <div className="md:space-y-11 space-y-8 lg:w-1/2 text-center lg:text-left">
+        <h2
+          className={`${V2.className} font-semibold md:text-6xl text-5xl tracking-wide`}
+        >
           Connect, Create, & Get{" "}
           <span className="text-accent">Crazy with Friends!</span>
         </h2>
-        <p className="font-normal text-xl">
+        <p className="font-normal md:text-xl text-lg">
           The fun way to hang out with friends online. Chat, brainstorm, and
           draw together on a shared canvas. Let your creativity flow!
         </p>

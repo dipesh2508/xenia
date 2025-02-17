@@ -5,8 +5,8 @@ import { Button } from "@repo/ui/components/ui/button";
 
 const PdfShare = () => {
   return (
-    <div className="flex justify-between items-center gap-20 py-24 px-36">
-      <div className="space-y-8 w-1/2">
+    <div className="flex justify-between items-center py-24 lg:gap-20 gap-10 lg:px-36 md:px-14 lg:flex-row flex-col px-6 lg:text-left text-center">
+      <div className="space-y-8 lg:w-1/2">
         <h2 className={`font-bold text-5xl leading-tight`}>
           Your Ideas, <span className="text-accent">Shared</span> & Amplified
         </h2>

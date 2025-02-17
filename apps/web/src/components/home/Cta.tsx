@@ -11,16 +11,16 @@ const Cta = () => {
         src={Smilie}
         alt="smilie"
         loading="lazy"
-        className="absolute left-10 bottom-10"
+        className="absolute lg:left-10 lg:bottom-10 -left-10 bottom-2 lg:w-96 w-48 lg:opacity-100 opacity-90"
       />
       <Image
         src={HeartSmilie}
         alt="heart smilie"
         loading="lazy"
-        className="absolute right-0 top-4"
+        className="absolute lg:right-0 lg:top-4 right-0 -top-16 lg:w-48 w-24 lg:opacity-100 opacity-80"
       />
       <h2
-        className={`${V2.className} font-semibold text-6xl tracking-wide mx-96 text-center leading-tight`}
+        className={`${V2.className} font-semibold lg:text-6xl text-4xl tracking-wide lg:mx-96 mx-8 text-center leading-tight z-10`}
       >
         Ready to connect with friends and colleagues the{" "}
         <span className="text-accent">fun way?</span>{" "}
