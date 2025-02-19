@@ -13,6 +13,7 @@
   "dependencies": {
     "@repo/database": "*",
     "@repo/ui": "*",
+    "motion": "^12.4.3",
     "next": "14.2.21",
     "react": "^18",
     "react-dom": "^18",

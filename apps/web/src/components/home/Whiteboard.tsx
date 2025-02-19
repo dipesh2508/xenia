@@ -4,6 +4,7 @@ import StickyNote from "@/assets/stickynoteWhiteboardUpsacle.png";
 import WhiteboardImg from "@/assets/WhiteboardUpscaled.png";
 import LeftSquiggle from "@/assets/WhiteboardLeftVector.svg";
 import RightSquiggle from "@/assets/whiteboardRightVector.svg";
+import MotionDiv from "../animations/MotionDiv";
 
 const Whiteboard = () => {
   return (
@@ -21,7 +22,13 @@ const Whiteboard = () => {
         className="absolute right-0 bottom-0"
       />
 
-      <div className="relative w-fit">
+      <MotionDiv
+        initial={{ opacity: 0, x: 50 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.8 }}
+        viewport={{ once: true }}
+        className="relative w-fit"
+      >
         <Image
           src={WhiteboardImg}
           alt="Whiteboard and Fun"
@@ -35,11 +42,17 @@ const Whiteboard = () => {
           alt="Sticky Note"
           loading="lazy"
           height={350}
-          className="lg:h-72 lg:w-80  h-48 w-56 z-20 absolute lg:bottom-1 left-0 bottom-2 translate-x-[-20%] translate-y-[20%]"
+          className="lg:h-80 lg:w-96 md:hidden lg:inline-block h-48 w-56 z-20 absolute lg:bottom-6 left-0 bottom-2 translate-x-[-20%] translate-y-[20%]"
         />
-      </div>
+      </MotionDiv>
 
-      <div className="space-y-8 text-primary-foreground lg:w-1/2 z-10 lg:text-left text-center">
+      <MotionDiv
+        initial={{ opacity: 0, x: -50 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.8 }}
+        viewport={{ once: true }}
+        className="space-y-8 text-primary-foreground lg:w-1/2 z-10 lg:text-left text-center"
+      >
         <h2 className={`font-bold lg:text-5xl text-4xl leading-tight `}>
           Let Your Imagination Run Wild and Get Creative Together!
         </h2>
@@ -48,7 +61,7 @@ const Whiteboard = () => {
           and annotate seamlessly with your community members. Perfect for team
           planning, design discussions, and creative problem-solving.
         </p>
-      </div>
+      </MotionDiv>
     </div>
   );
 };
