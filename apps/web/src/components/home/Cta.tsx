@@ -2,7 +2,7 @@ import { V2 } from "@/lib/fonts";
 import { Button } from "@repo/ui/components/ui/button";
 import Image from "next/image";
 import HeartSmilie from "@/assets/HeartSmilie.png";
-import Smilie from "@/assets/smilie.png";
+import Smilie from "@/assets/Smilie.png";
 import MotionDiv from "../animations/MotionDiv";
 const Cta = () => {
   return (
