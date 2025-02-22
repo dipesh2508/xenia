@@ -6,12 +6,14 @@ import { navLinks } from "../../constants";
 import Link from "next/link";
 import { Button } from "@repo/ui/components/ui/button";
 import { FaBars } from "react-icons/fa6";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { AnimatePresence } from "framer-motion";
 import MotionDiv from "@/components/animations/MotionDiv";
+import { AuthContext } from "@/context/AuthContext";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { setShowLogin, setShowSignup } = useContext(AuthContext);
   return (
     <div className="md:max-h-24 max-h-12">
       <div className="flex justify-between items-center lg:mx-36 md:mx-10 mx-6 my-5 relative">
@@ -35,13 +37,27 @@ const Navbar = () => {
         </ul>
 
         <div className="lg:flex space-x-3 hidden">
-          <Link href="/login">
-            <Button className="bg-background hover:border hover:border-primary hover:bg-background text-foreground">
+          <Link href="/sign-in">
+            <Button
+              className="bg-background hover:border hover:border-primary hover:bg-background text-foreground"
+              onClick={() => {
+                setShowLogin(true);
+                setShowSignup(false);
+              }}
+            >
               Login
             </Button>
           </Link>
-          <Link href="/signin">
-            <Button variant={"gradient"}>Sign Up</Button>
+          <Link href="/sign-up">
+            <Button
+              variant={"gradient"}
+              onClick={() => {
+                setShowLogin(false);
+                setShowSignup(true);
+              }}
+            >
+              Sign Up
+            </Button>
           </Link>
         </div>
 
@@ -78,13 +94,27 @@ const Navbar = () => {
 
                 <hr className="w-1/2 h-1 mx-auto bg-primary-2 border-0 rounded-sm mb-2"></hr>
                 <div className="space-x-3 bg-background text-center py-5">
-                  <Link href="/login">
-                    <Button className="bg-background hover:border hover:border-primary hover:bg-background text-foreground">
+                  <Link href="/sign-in">
+                    <Button
+                      className="bg-background hover:border hover:border-primary hover:bg-background text-foreground"
+                      onClick={() => {
+                        setShowLogin(true);
+                        setShowSignup(false);
+                      }}
+                    >
                       Login
                     </Button>
                   </Link>
-                  <Link href="/signin">
-                    <Button variant={"gradient"}>Sign Up</Button>
+                  <Link href="/sign-up">
+                    <Button
+                      variant={"gradient"}
+                      onClick={() => {
+                        setShowLogin(false);
+                        setShowSignup(true);
+                      }}
+                    >
+                      Sign Up
+                    </Button>
                   </Link>
                 </div>
               </div>
