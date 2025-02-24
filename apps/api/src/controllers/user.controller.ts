@@ -1,8 +1,7 @@
 import { Request, Response } from "express";
 import { prisma } from "@repo/database";
 import bcrypt from "bcrypt";
-import { generateJwtToken } from "../utils/generateToken";
-// import { User } from "@repo/database/types";
+import { generateJwtToken } from "@/utils/generateToken";
 
 export const userSignup = async (req: Request, res: Response): Promise<any> => {
   const { name, email, password } = req.body;

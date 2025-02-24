@@ -3,8 +3,8 @@ import {
   checkAuth,
   userLogin,
   userSignup,
-} from "../controllers/user.controller";
-import { isLoggedIn } from "../middleware/isUserLoggedIn";
+} from "@/controllers/user.controller";
+import { isLoggedIn } from "@/middleware/isUserLoggedIn";
 
 const router = express.Router();
 
