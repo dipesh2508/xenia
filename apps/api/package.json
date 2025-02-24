@@ -13,12 +13,18 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@repo/database": "*",
     "@types/express": "^5.0.0",
+    "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.7",
     "esbuild": "^0.24.2",
     "express": "^4.21.2",
-    "@repo/database": "*"
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/cookie-parser": "^1.4.8",
+    "@types/jsonwebtoken": "^9.0.9",
     "@types/node": "^22.10.7",
     "concurrently": "^9.1.2",
     "ts-node": "^10.9.2"
