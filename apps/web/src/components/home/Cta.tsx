@@ -20,7 +20,7 @@ const Cta = () => {
         src={Smilie}
         alt="smilie"
         loading="lazy"
-        className="absolute lg:left-10 lg:bottom-10 -left-10 bottom-2 lg:w-96 w-48 lg:opacity-100 opacity-90"
+        className="absolute lg:-left-3 lg:bottom-10 -left-10 bottom-2 lg:w-96 w-48 lg:opacity-100 opacity-90"
       />
 
       <Image

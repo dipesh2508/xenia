@@ -6,6 +6,8 @@ import { FaInstagram } from "react-icons/fa6";
 import { FaFacebookF } from "react-icons/fa6";
 import { FaGithub } from "react-icons/fa6";
 import Link from "next/link";
+import MotionDiv from "../animations/MotionDiv";
+import MotionLi from "../animations/MotionLi";
 
 const footerSocials = [
   {
@@ -28,10 +30,40 @@ const footerSocials = [
   },
 ];
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      when: "beforeChildren",
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const linkVariants = {
+  hidden: {
+    opacity: 0,
+    y: 10,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+      when: "BeforeChildren",
+      staggerChildren: 0.1,
+    },
+  },
+};
+
 const Footer = () => {
   return (
     <div className="lg:mx-36 md:mx-10 mx-6">
-      <div className="flex lg:justify-between items-center my-8 lg:flex-row flex-col gap-8">
+      <MotionDiv
+        variants={containerVariants}
+        className="flex lg:justify-between items-center my-8 lg:flex-row flex-col gap-8"
+      >
         <Link href="/">
           <Image
             src={logo}
@@ -45,23 +77,25 @@ const Footer = () => {
         <div>
           <ul className="flex justify-center space-x-8">
             {navLinks.map((link) => (
-              <li key={link.id}>
+              <MotionLi variants={linkVariants} key={link.id}>
                 <Link href={`${link.id}`} className="text-foreground">
                   {link.title}
                 </Link>
-              </li>
+              </MotionLi>
             ))}
           </ul>
         </div>
 
         <div className="flex space-x-7">
           {footerSocials.map((social, idx) => (
-            <Link key={idx} href="" className="text-primary-7">
-              {social.icons}
-            </Link>
+            <MotionDiv variants={linkVariants} key={idx}>
+              <Link key={idx} href="" className="text-primary-7">
+                {social.icons}
+              </Link>
+            </MotionDiv>
           ))}
         </div>
-      </div>
+      </MotionDiv>
 
       <hr />
 

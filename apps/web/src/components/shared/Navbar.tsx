@@ -7,17 +7,70 @@ import Link from "next/link";
 import { Button } from "@repo/ui/components/ui/button";
 import { FaBars } from "react-icons/fa6";
 import { useContext, useState } from "react";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, easeInOut, hover } from "framer-motion";
 import MotionDiv from "@/components/animations/MotionDiv";
 import { AuthContext } from "@/context/AuthContext";
+import MotionLi from "../animations/MotionLi";
+
+// Parent container variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      when: "beforeChildren",
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const linkVariants = {
+  hidden: {
+    opacity: 0,
+    y: 10,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+      when: "BeforeChildren",
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const linkAnimationVariant = {
+  hidden: {
+    opacity: 0,
+    y: 0,
+    scale: 1.2,
+  },
+  hover: {
+    opacity: 1,
+    scale: 1,
+    transition: {
+      duration: 0.3,
+      // ease: easeInOut,
+    },
+  },
+};
+const leftPosition = (3 - 1) * 1.25;
+console.log(`Index: ${3}, Left position: ${leftPosition}rem`);
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { setShowLogin, setShowSignup } = useContext(AuthContext);
+
   return (
     <div className="md:max-h-24 max-h-12">
-      <div className="flex justify-between items-center lg:mx-36 md:mx-10 mx-6 my-5 relative">
-        <Link href="">
+      <MotionDiv
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="flex justify-between items-center lg:mx-36 md:mx-10 mx-6 my-5 relative"
+      >
+        <Link href="/">
           <Image
             src={logo}
             className="m-0 md:h-auto h-10"
@@ -26,38 +79,66 @@ const Navbar = () => {
           />
         </Link>
 
-        <ul className="lg:flex justify-center space-x-5 hidden">
+        <ul className="lg:flex justify-center space-x-5 hidden relative">
           {navLinks.map((link) => (
-            <li key={link.id}>
+            <MotionLi key={link.id} variants={linkVariants}>
               <Link href={`${link.id}`} className="text-black">
                 {link.title}
               </Link>
-            </li>
+            </MotionLi>
+          ))}
+          {navLinks.map((link, index) => (
+            <MotionLi
+              key={`${link.id}-hover`}
+              variants={linkAnimationVariant}
+              initial="hidden"
+              whileHover="hover"
+              className="absolute"
+              style={{
+                left: `${index * 4.35 - 1.25}rem`, // Subtract offset to align first item
+              }}
+            >
+              <Link href={`${link.id}`} className="text-primary-4">
+                {link.title}
+              </Link>
+            </MotionLi>
           ))}
         </ul>
 
         <div className="lg:flex space-x-3 hidden">
           <Link href="/sign-in">
-            <Button
-              className="bg-background hover:border hover:border-primary hover:bg-background text-foreground"
-              onClick={() => {
-                setShowLogin(true);
-                setShowSignup(false);
-              }}
+            <MotionDiv
+              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.1 }}
+              transition={{ duration: 0.2 }}
             >
-              Login
-            </Button>
+              <Button
+                className="bg-background hover:border hover:border-primary hover:bg-background text-foreground"
+                onClick={() => {
+                  setShowLogin(true);
+                  setShowSignup(false);
+                }}
+              >
+                Login
+              </Button>
+            </MotionDiv>
           </Link>
           <Link href="/sign-up">
-            <Button
-              variant={"gradient"}
-              onClick={() => {
-                setShowLogin(false);
-                setShowSignup(true);
-              }}
+            <MotionDiv
+              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.1 }}
+              transition={{ duration: 0.2 }}
             >
-              Sign Up
-            </Button>
+              <Button
+                variant={"gradient"}
+                onClick={() => {
+                  setShowLogin(false);
+                  setShowSignup(true);
+                }}
+              >
+                Sign Up
+              </Button>
+            </MotionDiv>
           </Link>
         </div>
 
@@ -81,47 +162,59 @@ const Navbar = () => {
               <div className="bg-background pb-20">
                 <ul className="bg-background p-8 text-center space-y-5">
                   {navLinks.map((link) => (
-                    <li key={link.id}>
+                    <MotionLi key={link.id} variants={linkVariants}>
                       <Link
                         href={`${link.id}`}
                         className="text-black text-lg font-normal"
                       >
                         {link.title}
                       </Link>
-                    </li>
+                    </MotionLi>
                   ))}
                 </ul>
 
                 <hr className="w-1/2 h-1 mx-auto bg-primary-2 border-0 rounded-sm mb-2"></hr>
                 <div className="space-x-3 bg-background text-center py-5">
                   <Link href="/sign-in">
-                    <Button
-                      className="bg-background hover:border hover:border-primary hover:bg-background text-foreground"
-                      onClick={() => {
-                        setShowLogin(true);
-                        setShowSignup(false);
-                      }}
+                    <MotionDiv
+                      whileTap={{ scale: 0.9 }}
+                      whileHover={{ scale: 1.1 }}
+                      transition={{ duration: 0.2 }}
                     >
-                      Login
-                    </Button>
+                      <Button
+                        className="bg-background hover:border hover:border-primary hover:bg-background text-foreground"
+                        onClick={() => {
+                          setShowLogin(true);
+                          setShowSignup(false);
+                        }}
+                      >
+                        Login
+                      </Button>
+                    </MotionDiv>
                   </Link>
                   <Link href="/sign-up">
-                    <Button
-                      variant={"gradient"}
-                      onClick={() => {
-                        setShowLogin(false);
-                        setShowSignup(true);
-                      }}
+                    <MotionDiv
+                      whileTap={{ scale: 0.9 }}
+                      whileHover={{ scale: 1.1 }}
+                      transition={{ duration: 0.2 }}
                     >
-                      Sign Up
-                    </Button>
+                      <Button
+                        variant={"gradient"}
+                        onClick={() => {
+                          setShowLogin(false);
+                          setShowSignup(true);
+                        }}
+                      >
+                        Sign Up
+                      </Button>
+                    </MotionDiv>
                   </Link>
                 </div>
               </div>
             </MotionDiv>
           )}
         </AnimatePresence>
-      </div>
+      </MotionDiv>
     </div>
   );
 };
