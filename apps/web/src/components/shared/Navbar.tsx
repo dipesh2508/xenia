@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Button } from "@repo/ui/components/ui/button";
 import { FaBars } from "react-icons/fa6";
 import { useContext, useState } from "react";
-import { AnimatePresence, easeInOut, hover } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import MotionDiv from "@/components/animations/MotionDiv";
 import { AuthContext } from "@/context/AuthContext";
 import MotionLi from "../animations/MotionLi";
@@ -27,14 +27,14 @@ const containerVariants = {
 const linkVariants = {
   hidden: {
     opacity: 0,
-    y: 10,
+    y: -10,
   },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
       duration: 0.5,
-      when: "BeforeChildren",
+      when: "beforeChildren",
       staggerChildren: 0.1,
     },
   },
@@ -50,13 +50,12 @@ const linkAnimationVariant = {
     opacity: 1,
     scale: 1,
     transition: {
-      duration: 0.3,
-      // ease: easeInOut,
+      duration: 0.5,
     },
   },
 };
-const leftPosition = (3 - 1) * 1.25;
-console.log(`Index: ${3}, Left position: ${leftPosition}rem`);
+const leftPosition = 0 * 4.35 - 1.25;
+console.log(`Index: ${0}, Left position: ${leftPosition}rem`);
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -95,10 +94,12 @@ const Navbar = () => {
               whileHover="hover"
               className="absolute"
               style={{
-                left: `${index * 4.35 - 1.25}rem`, // Subtract offset to align first item
+                ...(index === navLinks.length - 1
+                  ? { right: "0" }
+                  : { left: `${index * 4.36 - 1.25}rem` }),
               }}
             >
-              <Link href={`${link.id}`} className="text-primary-4">
+              <Link href={`${link.id}`} className="text-primary-4 font-normal">
                 {link.title}
               </Link>
             </MotionLi>

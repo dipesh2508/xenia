@@ -50,7 +50,13 @@ const Hero = () => {
         }}
         viewport={{ once: true }}
       >
-        <Image src={hero} alt="Hero" height={650} loading="lazy" />
+        <Image
+          src={hero}
+          alt="Hero"
+          height={650}
+          loading="lazy"
+          className="pt-6"
+        />
       </MotionDiv>
     </section>
   );

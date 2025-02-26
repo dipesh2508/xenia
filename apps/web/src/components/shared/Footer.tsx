@@ -51,7 +51,7 @@ const linkVariants = {
     y: 0,
     transition: {
       duration: 0.6,
-      when: "BeforeChildren",
+      when: "beforeChildren",
       staggerChildren: 0.1,
     },
   },
@@ -62,6 +62,8 @@ const Footer = () => {
     <div className="lg:mx-36 md:mx-10 mx-6">
       <MotionDiv
         variants={containerVariants}
+        initial="hidden"
+        animate="visible"
         className="flex lg:justify-between items-center my-8 lg:flex-row flex-col gap-8"
       >
         <Link href="/">
@@ -74,17 +76,15 @@ const Footer = () => {
           />
         </Link>
 
-        <div>
-          <ul className="flex justify-center space-x-8">
-            {navLinks.map((link) => (
-              <MotionLi variants={linkVariants} key={link.id}>
-                <Link href={`${link.id}`} className="text-foreground">
-                  {link.title}
-                </Link>
-              </MotionLi>
-            ))}
-          </ul>
-        </div>
+        <ul className="flex justify-center space-x-8">
+          {navLinks.map((link) => (
+            <MotionLi variants={linkVariants} key={link.id}>
+              <Link href={`${link.id}`} className="text-foreground">
+                {link.title}
+              </Link>
+            </MotionLi>
+          ))}
+        </ul>
 
         <div className="flex space-x-7">
           {footerSocials.map((social, idx) => (
