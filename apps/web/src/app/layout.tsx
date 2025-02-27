@@ -4,6 +4,7 @@ import "./globals.css";
 import "@repo/ui/globals.css";
 import Navbar from "../components/shared/Navbar";
 import Footer from "@/components/shared/Footer";
+import { AuthProvider } from "@/context/AuthContext";
 
 const montserrat = Montserrat({ subsets: ["latin"] });
 
@@ -29,11 +30,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${montserrat.className}`}>
-        <Navbar />
-        {children}
-        <Footer />
-      </body>
+      <AuthProvider>
+        <body
+          className={`${montserrat.className} bg-background text-foreground`}
+        >
+          <Navbar />
+          {children}
+          <Footer />
+        </body>
+      </AuthProvider>
     </html>
   );
 }

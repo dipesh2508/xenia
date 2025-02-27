@@ -14,6 +14,7 @@ const Hero = () => {
           type: "spring",
           damping: 6,
           stiffness: 100,
+          duration: 0.8,
         }}
         viewport={{ once: true }}
         className="md:space-y-11 space-y-8 lg:w-1/2 text-center lg:text-left"
@@ -49,7 +50,13 @@ const Hero = () => {
         }}
         viewport={{ once: true }}
       >
-        <Image src={hero} alt="Hero" height={650} loading="lazy" />
+        <Image
+          src={hero}
+          alt="Hero"
+          height={650}
+          loading="lazy"
+          className="pt-6"
+        />
       </MotionDiv>
     </section>
   );

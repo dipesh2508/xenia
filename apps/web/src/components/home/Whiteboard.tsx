@@ -25,7 +25,13 @@ const Whiteboard = () => {
       <MotionDiv
         initial={{ opacity: 0, x: 50 }}
         whileInView={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8 }}
+        // transition={{ duration: 0.8 }}
+        transition={{
+          type: "spring",
+          damping: 6,
+          stiffness: 100,
+          duration: 0.5,
+        }}
         viewport={{ once: true }}
         className="relative w-fit"
       >
@@ -49,7 +55,13 @@ const Whiteboard = () => {
       <MotionDiv
         initial={{ opacity: 0, x: -50 }}
         whileInView={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8 }}
+        // transition={{ duration: 0.8 }}
+        transition={{
+          type: "spring",
+          damping: 6,
+          stiffness: 100,
+          duration: 0.5,
+        }}
         viewport={{ once: true }}
         className="space-y-8 text-primary-foreground lg:w-1/2 z-10 lg:text-left text-center"
       >

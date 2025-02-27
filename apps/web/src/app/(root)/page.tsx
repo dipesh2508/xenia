@@ -7,11 +7,9 @@ import Cta from "@/components/home/Cta";
 
 export default function Home() {
   return (
-    <main className="min-h-screen">
-      {/* Priority loading for above-the-fold content */}
+    <main className="min-h-screen bg-background">
       <Hero />
 
-      {/* Suspense boundaries for better loading performance */}
       <section className="lazy-section">
         <Features />
       </section>
