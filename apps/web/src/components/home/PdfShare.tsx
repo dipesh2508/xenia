@@ -10,7 +10,12 @@ const PdfShare = () => {
       <MotionDiv
         initial={{ opacity: 0, x: -100 }}
         whileInView={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8 }}
+        transition={{
+          type: "spring",
+          damping: 6,
+          stiffness: 100,
+          duration: 0.5,
+        }}
         viewport={{ once: true }}
         className="space-y-8 lg:w-1/2"
       >
@@ -21,15 +26,26 @@ const PdfShare = () => {
           Easily upload, share, and organize files with your community members,
           ensuring seamless access anytime, anywhere.
         </p>
-        <Button size={"lg"} className="px-5 py-6" variant={"gradient"}>
-          Start Chatting Now
-        </Button>
+        <MotionDiv
+          whileHover={{ y: -8 }}
+          whileTap={{ y: 2 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Button size={"lg"} className="px-5 py-6" variant={"gradient"}>
+            Start Chatting Now
+          </Button>
+        </MotionDiv>
       </MotionDiv>
 
       <MotionDiv
         initial={{ opacity: 0, x: 100 }}
         whileInView={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8 }}
+        transition={{
+          type: "spring",
+          damping: 6,
+          stiffness: 100,
+          duration: 0.5,
+        }}
         viewport={{ once: true }}
       >
         <Image
