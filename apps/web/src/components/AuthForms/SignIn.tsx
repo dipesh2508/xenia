@@ -45,7 +45,7 @@ const SignIn = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <Card className="p-2 mx-24 my-10 text-primary-9 shadow-md shadow-primary-1">
+    <Card className="p-1 lg:p-2 lg:mx-24 mx-2 lg:my-10 mt-6 mb-10 text-primary-9 shadow-md shadow-primary-1">
       <CardContent>
         <Form {...form}>
           <form
@@ -62,7 +62,7 @@ const SignIn = () => {
                     <Input
                       placeholder="XeniaOG"
                       {...field}
-                      className="bg-primary-1/20 rounded-lg"
+                      className="bg-primary-1/20 rounded-lg placeholder:opacity-50"
                     />
                   </FormControl>
                   <FormDescription>
@@ -83,7 +83,7 @@ const SignIn = () => {
                     <Input
                       placeholder="xenia@connect.com"
                       {...field}
-                      className="bg-primary-1/20 rounded-lg"
+                      className="bg-primary-1/20 rounded-lg placeholder:opacity-50"
                     />
                   </FormControl>
                   <FormDescription>
@@ -118,7 +118,7 @@ const SignIn = () => {
                       <Input
                         placeholder=""
                         {...field}
-                        className="bg-primary-1/20 rounded-lg w-full pr-8"
+                        className="bg-primary-1/20 rounded-lg w-full pr-8 placeholder:opacity-50"
                         type={showPassword ? "text" : "password"}
                       />
                     </div>

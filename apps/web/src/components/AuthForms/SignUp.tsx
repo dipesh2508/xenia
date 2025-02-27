@@ -46,7 +46,7 @@ const SignUp = () => {
   }
 
   return (
-    <Card className="p-2 mx-24 my-8 text-primary-9 shadow-md shadow-primary-1">
+    <Card className="p-1 lg:p-2 lg:mx-24 mx-2 lg:my-8 mt-6 mb-10 text-primary-9 shadow-md shadow-primary-1">
       <CardContent>
         <Form {...form}>
           <form
@@ -63,7 +63,7 @@ const SignUp = () => {
                     <Input
                       placeholder="XeniaOG"
                       {...field}
-                      className="bg-primary-1/20 rounded-lg"
+                      className="bg-primary-1/20 rounded-lg placeholder:opacity-50"
                     />
                   </FormControl>
                   <FormDescription>
@@ -84,7 +84,7 @@ const SignUp = () => {
                     <Input
                       placeholder="xenia@connect.com"
                       {...field}
-                      className="bg-primary-1/20 rounded-lg"
+                      className="bg-primary-1/20 rounded-lg placeholder:opacity-50"
                     />
                   </FormControl>
                   <FormDescription>
@@ -105,7 +105,7 @@ const SignUp = () => {
                     <Input
                       placeholder=""
                       {...field}
-                      className="bg-primary-1/20 rounded-lg"
+                      className="bg-primary-1/20 rounded-lg placeholder:opacity-50"
                       type="password"
                     />
                   </FormControl>
@@ -124,7 +124,7 @@ const SignUp = () => {
                     <Input
                       placeholder=""
                       {...field}
-                      className="bg-primary-1/20 rounded-lg"
+                      className="bg-primary-1/20 rounded-lg placeholder:opacity-50"
                       type="password"
                     />
                   </FormControl>

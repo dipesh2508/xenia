@@ -160,17 +160,17 @@ const Navbar = () => {
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.5, ease: "easeInOut" }}
             >
-              <div className="bg-background pb-20">
-                <ul className="bg-background p-8 text-center space-y-5">
+              <div className="bg-background pb-20 text-black">
+                <ul className="bg-background p-8 text-center space-y-5 text-black">
                   {navLinks.map((link) => (
-                    <MotionLi key={link.id} variants={linkVariants}>
+                    <li key={link.id}>
                       <Link
                         href={`${link.id}`}
                         className="text-black text-lg font-normal"
                       >
                         {link.title}
                       </Link>
-                    </MotionLi>
+                    </li>
                   ))}
                 </ul>
 

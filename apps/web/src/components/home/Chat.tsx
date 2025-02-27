@@ -9,7 +9,12 @@ const Chat = () => {
       <MotionDiv
         initial={{ opacity: 0, x: 50 }}
         whileInView={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8 }}
+        transition={{
+          type: "spring",
+          damping: 6,
+          stiffness: 100,
+          duration: 0.5,
+        }}
         viewport={{ once: true }}
         className="lg:w-1/2"
       >
@@ -25,7 +30,12 @@ const Chat = () => {
       <MotionDiv
         initial={{ opacity: 0, x: -50 }}
         whileInView={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8 }}
+        transition={{
+          type: "spring",
+          damping: 6,
+          stiffness: 100,
+          duration: 0.5,
+        }}
         viewport={{ once: true }}
         className="lg:w-1/2"
       >
