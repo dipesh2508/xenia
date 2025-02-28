@@ -14,6 +14,7 @@ import {
 } from "@repo/ui/components/ui/form";
 import { Input } from "@repo/ui/components/ui/input";
 import { Card, CardContent } from "@repo/ui/components/ui/card";
+import axios from "axios";
 
 const formSchema = z
   .object({
@@ -41,8 +42,19 @@ const SignUp = () => {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    await axios
+      .post("http://localhost:8000/api/user/signup", {
+        name: values.username,
+        email: values.email,
+        password: values.password,
+      })
+      .then((response) => {
+        console.log(response);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
   }
 
   return (

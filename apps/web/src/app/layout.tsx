@@ -10,7 +10,7 @@ const montserrat = Montserrat({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Xenia",
-  description: "Connect & Create wiht Friends Online",
+  description: "Connect & Create with Friends Online",
   keywords: [
     "Xenia",
     "Chat",

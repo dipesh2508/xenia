@@ -62,7 +62,7 @@ const Navbar = () => {
   const { setShowLogin, setShowSignup } = useContext(AuthContext);
 
   return (
-    <div className="md:max-h-24 max-h-12">
+    <div className="md:max-h-24 max-h-12 sticky top-0 bg-opacity-70">
       <MotionDiv
         variants={containerVariants}
         initial="hidden"

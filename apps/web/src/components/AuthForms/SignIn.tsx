@@ -17,6 +17,7 @@ import { Card, CardContent } from "@repo/ui/components/ui/card";
 import { FaEye } from "react-icons/fa6";
 import { useState } from "react";
 import { FaEyeSlash } from "react-icons/fa6";
+import axios from "axios";
 
 const formSchema = z.object({
   username: z.string().min(2, {
@@ -38,8 +39,18 @@ const SignIn = () => {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    await axios
+      .post("http://localhost:8000/api/user/login", {
+        email: values.email,
+        password: values.password,
+      })
+      .then((response) => {
+        console.log(response);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
   }
 
   const [showPassword, setShowPassword] = useState(false);
