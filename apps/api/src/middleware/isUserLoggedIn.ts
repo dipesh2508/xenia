@@ -52,8 +52,9 @@ export const isLoggedIn = async (
     req.user = user;
     next();
   } catch (error) {
+    console.error("Authentication Error:", error);
     return res.status(401).json({
-      message: "Internal server error.",
+      message: "Authentication failed. Please log in again.",
     });
   }
 };
