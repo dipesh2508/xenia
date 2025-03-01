@@ -32,7 +32,7 @@ export default function RootLayout({
     <html lang="en">
       <AuthProvider>
         <body
-          className={`${montserrat.className} bg-background text-foreground`}
+          className={`${montserrat.className} bg-background text-foreground overflow-visible`}
         >
           <Navbar />
           {children}

@@ -62,12 +62,12 @@ const Navbar = () => {
   const { setShowLogin, setShowSignup } = useContext(AuthContext);
 
   return (
-    <div className="md:max-h-24 max-h-12 sticky top-0 bg-opacity-70">
+    <div className="sticky top-0 z-50 bg-gradient-to-b from-background to-white/30">
       <MotionDiv
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="flex justify-between items-center lg:mx-36 md:mx-10 mx-6 my-5 relative"
+        className="flex justify-between items-center lg:mx-36 md:mx-10 mx-6 py-3 relative"
       >
         <Link href="/">
           <Image
@@ -155,7 +155,7 @@ const Navbar = () => {
           {isOpen && (
             <MotionDiv
               className="lg:hidden rounded-b-lg absolute z-10 top-14 right-0 bg-background shadow-md inset-0 -m-8"
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 25 }}
               animate={{ opacity: 1, y: 30 }}
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.5, ease: "easeInOut" }}
@@ -167,6 +167,7 @@ const Navbar = () => {
                       <Link
                         href={`${link.id}`}
                         className="text-black text-lg font-normal"
+                        onClick={() => setIsOpen(false)}
                       >
                         {link.title}
                       </Link>
@@ -187,6 +188,7 @@ const Navbar = () => {
                         onClick={() => {
                           setShowLogin(true);
                           setShowSignup(false);
+                          setIsOpen(false);
                         }}
                       >
                         Login
@@ -204,6 +206,7 @@ const Navbar = () => {
                         onClick={() => {
                           setShowLogin(false);
                           setShowSignup(true);
+                          setIsOpen(false);
                         }}
                       >
                         Sign Up
