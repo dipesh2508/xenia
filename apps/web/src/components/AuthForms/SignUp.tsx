@@ -43,18 +43,15 @@ const SignUp = () => {
     },
   });
 
-  const { mutate, error, isLoading } = useApi(
-    "http://localhost:8000/api/user/signup",
-    {
-      method: "POST",
-      onSuccess: (data) => {
-        // console.log(data);
-      },
-      onError: (error) => {
-        console.log(error);
-      },
-    }
-  );
+  const { mutate, error, isLoading } = useApi("/user/signup", {
+    method: "POST",
+    onSuccess: (data) => {
+      // console.log(data);
+    },
+    onError: (error) => {
+      console.log(error);
+    },
+  });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     await mutate({

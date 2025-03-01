@@ -35,18 +35,15 @@ const SignIn = () => {
     defaultValues: { email: "", password: "" },
   });
 
-  const { mutate, error, isLoading } = useApi(
-    "http://localhost:8000/api/user/login",
-    {
-      method: "POST",
-      onSuccess: (data) => {
-        // console.log(data);
-      },
-      onError: (error) => {
-        console.log(error);
-      },
-    }
-  );
+  const { mutate, error, isLoading } = useApi("/user/login", {
+    method: "POST",
+    onSuccess: (data) => {
+      // console.log(data);
+    },
+    onError: (error) => {
+      console.log(error);
+    },
+  });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     await mutate({ body: { email: values.email, password: values.password } });
