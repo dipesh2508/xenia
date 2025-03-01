@@ -14,6 +14,8 @@ import {
 } from "@repo/ui/components/ui/form";
 import { Input } from "@repo/ui/components/ui/input";
 import { Card, CardContent } from "@repo/ui/components/ui/card";
+import { FaSpinner } from "react-icons/fa6";
+import { useApi } from "@/hooks/useApi";
 
 const formSchema = z
   .object({
@@ -41,8 +43,24 @@ const SignUp = () => {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+  const { mutate, error, isLoading } = useApi("/user/signup", {
+    method: "POST",
+    onSuccess: (data) => {
+      // console.log(data);
+    },
+    onError: (error) => {
+      console.log(error);
+    },
+  });
+
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    await mutate({
+      body: {
+        name: values.username,
+        email: values.email,
+        password: values.password,
+      },
+    });
   }
 
   return (
@@ -107,6 +125,7 @@ const SignUp = () => {
                       {...field}
                       className="bg-primary-1/20 rounded-lg placeholder:opacity-50"
                       type="password"
+                      autoComplete="on"
                     />
                   </FormControl>
                   <FormDescription>Let&apos;s add security.</FormDescription>
@@ -126,6 +145,7 @@ const SignUp = () => {
                       {...field}
                       className="bg-primary-1/20 rounded-lg placeholder:opacity-50"
                       type="password"
+                      autoComplete="on"
                     />
                   </FormControl>
                   <FormDescription>
@@ -141,7 +161,11 @@ const SignUp = () => {
               variant={"gradient"}
               className="self-center py-6 px-5 shadow-lg shadow-primary-1"
             >
-              Register
+              {isLoading ? (
+                <FaSpinner className="animate-spin text-xl" />
+              ) : (
+                "Register"
+              )}
             </Button>
           </form>
         </Form>

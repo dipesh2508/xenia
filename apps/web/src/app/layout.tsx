@@ -10,7 +10,7 @@ const montserrat = Montserrat({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Xenia",
-  description: "Connect & Create wiht Friends Online",
+  description: "Connect & Create with Friends Online",
   keywords: [
     "Xenia",
     "Chat",
@@ -32,7 +32,7 @@ export default function RootLayout({
     <html lang="en">
       <AuthProvider>
         <body
-          className={`${montserrat.className} bg-background text-foreground`}
+          className={`${montserrat.className} bg-background text-foreground overflow-visible`}
         >
           <Navbar />
           {children}

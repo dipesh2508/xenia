@@ -17,11 +17,10 @@ import { Card, CardContent } from "@repo/ui/components/ui/card";
 import { FaEye } from "react-icons/fa6";
 import { useState } from "react";
 import { FaEyeSlash } from "react-icons/fa6";
+import { useApi } from "@/hooks/useApi";
+import { FaSpinner } from "react-icons/fa6";
 
 const formSchema = z.object({
-  username: z.string().min(2, {
-    message: "Username must be at least 2 characters.",
-  }),
   email: z.string().email({
     message: "Please enter a valid email address.",
   }),
@@ -33,13 +32,21 @@ const formSchema = z.object({
 const SignIn = () => {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      username: "",
+    defaultValues: { email: "", password: "" },
+  });
+
+  const { mutate, error, isLoading } = useApi("/user/login", {
+    method: "POST",
+    onSuccess: (data) => {
+      // console.log(data);
+    },
+    onError: (error) => {
+      console.log(error);
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    await mutate({ body: { email: values.email, password: values.password } });
   }
 
   const [showPassword, setShowPassword] = useState(false);
@@ -52,27 +59,6 @@ const SignIn = () => {
             onSubmit={form.handleSubmit(onSubmit)}
             className="space-y-8 flex flex-col pt-8 pb-1"
           >
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Username</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="XeniaOG"
-                      {...field}
-                      className="bg-primary-1/20 rounded-lg placeholder:opacity-50"
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    This is your public display name.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <FormField
               control={form.control}
               name="email"
@@ -120,6 +106,7 @@ const SignIn = () => {
                         {...field}
                         className="bg-primary-1/20 rounded-lg w-full pr-8 placeholder:opacity-50"
                         type={showPassword ? "text" : "password"}
+                        autoComplete="on"
                       />
                     </div>
                   </FormControl>
@@ -134,7 +121,11 @@ const SignIn = () => {
               variant={"gradient"}
               className="self-center py-6 px-5 shadow-lg shadow-primary-1"
             >
-              Let&apos;s Go!
+              {isLoading ? (
+                <FaSpinner className="animate-spin text-xl" />
+              ) : (
+                "Let's Go!"
+              )}
             </Button>
           </form>
         </Form>
