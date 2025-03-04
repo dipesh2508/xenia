@@ -1,48 +1,23 @@
 import { MockResponse, createMockRequest } from "../helpers/test-helper";
 import * as userController from "../../controllers/user.controller";
-import { prisma } from "@repo/database";
-import bcrypt from "bcrypt";
+import { createTestUser, cleanupTestUsers } from "../helpers/db-test-helper";
 import { Response } from "express";
-
-// Manual mocks for Jasmine testing
-const mockPrisma = {
-  user: {
-    findUnique: jasmine.createSpy('findUnique'),
-    create: jasmine.createSpy('create')
-  }
-};
-
-const mockBcrypt = {
-  genSalt: jasmine.createSpy('genSalt'),
-  hash: jasmine.createSpy('hash'),
-  compare: jasmine.createSpy('compare')
-};
-
-const mockGenerateToken = {
-  generateJwtToken: jasmine.createSpy('generateJwtToken')
-};
-
-// Replace the actual implementations with mocks
-(prisma as any) = mockPrisma;
-(bcrypt as any).genSalt = mockBcrypt.genSalt;
-(bcrypt as any).hash = mockBcrypt.hash;
-(bcrypt as any).compare = mockBcrypt.compare;
-
-// Mock the generateJwtToken function
-(userController as any).generateJwtToken = mockGenerateToken.generateJwtToken;
 
 describe("User Controller", () => {
   let res: MockResponse;
+  const testEmails: string[] = [];
+  
+  beforeAll(() => {
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
+  });
+
+  afterAll(async () => {
+    // Cleanup all test users
+    await cleanupTestUsers(testEmails);
+  });
 
   beforeEach(() => {
     res = new MockResponse();
-    // Reset mocks
-    mockPrisma.user.findUnique.calls.reset();
-    mockPrisma.user.create.calls.reset();
-    mockBcrypt.genSalt.calls.reset();
-    mockBcrypt.hash.calls.reset();
-    mockBcrypt.compare.calls.reset();
-    mockGenerateToken.generateJwtToken.calls.reset();
   });
 
   describe("userSignup", () => {
@@ -51,7 +26,7 @@ describe("User Controller", () => {
         body: { name: "Test User", email: "", password: "" }
       });
 
-      await userController.userSignup(req as any, res as unknown as Response);
+      await userController.userSignup(req, res as unknown as Response);
       
       expect(res.getStatus()).toBe(400);
       expect(res.getJson().message).toContain("Please provide all fields");
@@ -69,52 +44,49 @@ describe("User Controller", () => {
     });
 
     it("should return 400 if user already exists", async () => {
+      const userData = {
+        name: "Existing Test User",
+        email: "existing.test@example.com",
+        password: "password123"
+      };
+      
+      // Create a user first
+      await createTestUser(userData);
+      testEmails.push(userData.email);
+
+      // Try to create the same user again
       const req = createMockRequest({
-        body: { name: "Test User", email: "existing@example.com", password: "123456" }
+        body: userData
       });
 
-      mockPrisma.user.findUnique.and.returnValue(Promise.resolve({ 
-        id: "1", 
-        email: "existing@example.com" 
-      }));
-
-      await userController.userSignup(req as any, res as unknown as Response);
+      await userController.userSignup(req, res as unknown as Response);
       
       expect(res.getStatus()).toBe(400);
-      expect(res.getJson().message).toContain("User with the provided email already exist");
+      expect(res.getJson().message).toBe("User with the provided email already exist.");
     });
 
     it("should create a new user successfully", async () => {
-      const req = createMockRequest({
-        body: { 
-          name: "New User", 
-          email: "new@example.com", 
-          password: "123456" 
-        }
-      });
+      const userData = {
+        name: "New Test User",
+        email: "new.test@example.com",
+        password: "password123"
+      };
+      testEmails.push(userData.email);
 
-      mockPrisma.user.findUnique.and.returnValue(Promise.resolve(null));
-      mockBcrypt.genSalt.and.returnValue(Promise.resolve("salt"));
-      mockBcrypt.hash.and.returnValue(Promise.resolve("hashedPassword"));
-      mockPrisma.user.create.and.returnValue(Promise.resolve({ 
-        id: "2", 
-        name: "New User", 
-        email: "new@example.com",
-        password: "hashedPassword" 
-      }));
-
-      await userController.userSignup(req as any, res as unknown as Response);
+      const req = createMockRequest({ body: userData });
+      await userController.userSignup(req, res as unknown as Response);
       
       expect(res.getStatus()).toBe(201);
-      expect(res.getJson()).toEqual(jasmine.objectContaining({
-        id: "2",
-        name: "New User",
-        email: "new@example.com"
-      }));
+      const response = res.getJson();
+      expect(response).toEqual({
+        id: jasmine.any(String),
+        name: userData.name,
+        email: userData.email
+      });
+      expect(res.getCookies().token).toBeDefined();
     });
   });
 
-  // Example of a login test
   describe("userLogin", () => {
     it("should return 400 if email or password is missing", async () => {
       const req = createMockRequest({
@@ -125,6 +97,116 @@ describe("User Controller", () => {
       
       expect(res.getStatus()).toBe(400);
       expect(res.getJson().message).toContain("Please provide all fields");
+    });
+
+    it("should return 400 if user not found", async () => {
+      const req = createMockRequest({
+        body: { email: "nonexistent@example.com", password: "password" }
+      });
+
+      await userController.userLogin(req as any, res as unknown as Response);
+      
+      expect(res.getStatus()).toBe(400);
+      expect(res.getJson().message).toContain("Invalid credentials");
+    });
+
+    it("should return 400 if password does not match", async () => {
+      const req = createMockRequest({
+        body: { email: "user@example.com", password: "wrongpassword" }
+      });
+
+      await userController.userLogin(req as any, res as unknown as Response);
+      
+      expect(res.getStatus()).toBe(400);
+      expect(res.getJson().message).toContain("Invalid credentials");
+    });
+
+    it("should login successfully with valid credentials", async () => {
+      const userData = {
+        name: "Login Test User",
+        email: "login.test@example.com",
+        password: "password123"
+      };
+      
+      // Create test user first
+      const user = await createTestUser(userData);
+      testEmails.push(userData.email);
+
+      const req = createMockRequest({
+        body: { 
+          email: userData.email, 
+          password: userData.password
+        }
+      });
+
+      await userController.userLogin(req, res as unknown as Response);
+
+      expect(res.getStatus()).toBe(200);
+      expect(res.getJson()).toEqual({
+        id: user.id,
+        name: user.name,
+        email: user.email
+      });
+      expect(res.getCookies().token).toBeDefined();
+    });
+  });
+
+  describe("logout", () => {
+    it("should clear the token cookie", async () => {
+      const req = createMockRequest({});
+
+      await userController.logout(req as any, res as unknown as Response);
+      
+      expect(res.getStatus()).toBe(200);
+      expect(res.getClearedCookies()).toContain("token");
+      expect(res.getJson().message).toContain("Logged out successfully");
+    });
+  });
+
+  describe("checkAuth", () => {
+    it("should return the user information", async () => {
+      const user = { id: "4", name: "Auth User", email: "auth@example.com" };
+      const req = createMockRequest({ user });
+
+      await userController.checkAuth(req as any, res as unknown as Response);
+      
+      expect(res.getStatus()).toBe(200);
+      expect(res.getJson()).toEqual(user);
+    });
+  });
+
+  describe("deleteUser", () => {
+    it("should delete user successfully", async () => {
+      const userData = {
+        name: "Delete Test User",
+        email: "delete.test@example.com",
+        password: "password123"
+      };
+      
+      // Create test user first
+      const user = await createTestUser(userData);
+      testEmails.push(userData.email);
+
+      const req = createMockRequest({
+        params: { id: user.id }
+      });
+
+      await userController.deleteUser(req, res as unknown as Response);
+
+      expect(res.getStatus()).toBe(200);
+      expect(res.getJson().message).toBe("User deleted successfully.");
+    });
+
+    it("should return 404 if user not found", async () => {
+      const userId = "nonexistent-user";
+      const req = createMockRequest({
+        params: { id: userId }
+      });
+
+      await userController.deleteUser(req, res as unknown as Response);
+      
+      expect(res.getStatus()).toBe(500);
+      expect(res.getJson().message).toBe("Internal server error.");
     });
   });
 });

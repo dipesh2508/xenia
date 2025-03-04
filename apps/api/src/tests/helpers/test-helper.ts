@@ -1,78 +1,113 @@
-import { Response } from "express";
+import { Request, Response } from 'express';
+import { ParamsDictionary } from 'express-serve-static-core';
+import { ParsedQs } from 'qs';
+
+type RequestOptions = {
+  body?: any;
+  query?: ParsedQs;
+  params?: ParamsDictionary;
+  cookies?: { [key: string]: string };
+  headers?: { [key: string]: string };
+  user?: any;
+};
 
 /**
- * Mock Response class for testing Express routes without supertest
+ * Creates a mock Express request object
+ */
+export function createMockRequest(options: RequestOptions = {}): Request {
+  const req = {
+    body: options.body || {},
+    query: options.query || {},
+    params: options.params || {},
+    cookies: options.cookies || {},
+    headers: options.headers || {},
+    user: options.user,
+    
+    // Add required Express.Request properties
+    app: {},
+    res: {},
+    signedCookies: {},
+    
+    // Common methods with Jasmine spies
+    get: jasmine.createSpy('get').and.callFake((header: string) => options.headers?.[header]),
+    header: jasmine.createSpy('header').and.callFake((header: string) => options.headers?.[header]),
+    accepts: jasmine.createSpy('accepts').and.returnValue(true),
+    acceptsCharsets: jasmine.createSpy('acceptsCharsets').and.returnValue(true),
+    acceptsEncodings: jasmine.createSpy('acceptsEncodings').and.returnValue(true),
+    acceptsLanguages: jasmine.createSpy('acceptsLanguages').and.returnValue(true),
+    range: jasmine.createSpy('range').and.returnValue(null),
+    
+    // Add other required properties
+    baseUrl: '',
+    originalUrl: '',
+    path: '',
+    hostname: '',
+    ip: '',
+    method: 'GET',
+    protocol: 'http',
+    secure: false,
+    xhr: false,
+    
+    // Add required methods
+    is: jasmine.createSpy('is').and.returnValue(false),
+    param: jasmine.createSpy('param').and.returnValue(null)
+  } as unknown as Request;
+
+  return req;
+}
+
+/**
+ * Mock Express Response class that can be used in controller tests
  */
 export class MockResponse {
   private statusCode: number = 200;
-  private responseBody: any = {};
+  private jsonData: any = null;
   private headers: Record<string, string> = {};
   private cookies: Record<string, any> = {};
+  private clearedCookies: string[] = [];
 
-  status(code: number) {
+  status(code: number): MockResponse {
     this.statusCode = code;
     return this;
   }
 
-  json(data: any) {
-    this.responseBody = data;
+  json(data: any): MockResponse {
+    this.jsonData = data;
     return this;
   }
 
-  send(data: any) {
-    this.responseBody = data;
-    return this;
-  }
-
-  setHeader(name: string, value: string) {
+  setHeader(name: string, value: string): MockResponse {
     this.headers[name] = value;
     return this;
   }
 
-  cookie(name: string, value: any, options?: any) {
+  cookie(name: string, value: string, options?: any): MockResponse {
     this.cookies[name] = { value, options };
     return this;
   }
 
-  clearCookie(name: string) {
-    delete this.cookies[name];
+  clearCookie(name: string): MockResponse {
+    this.clearedCookies.push(name);
     return this;
   }
 
-  getStatus() {
+  getStatus(): number {
     return this.statusCode;
   }
 
-  getJson() {
-    return this.responseBody;
+  getJson(): any {
+    return this.jsonData;
   }
 
-  getHeaders() {
+  getHeaders(): Record<string, string> {
     return this.headers;
   }
 
-  getCookies() {
+  getCookies(): Record<string, any> {
     return this.cookies;
   }
-}
 
-/**
- * Creates a mock request object for testing
- */
-export function createMockRequest(options: {
-  body?: any;
-  params?: any;
-  query?: any;
-  headers?: Record<string, string>;
-  cookies?: Record<string, string>;
-  user?: any;
-}) {
-  return {
-    body: options.body || {},
-    params: options.params || {},
-    query: options.query || {},
-    headers: options.headers || {},
-    cookies: options.cookies || {},
-    user: options.user || null
-  };
+  getClearedCookies(): string[] {
+    return this.clearedCookies;
+  }
 }
