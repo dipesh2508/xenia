@@ -29,10 +29,22 @@ export default function ChatRoomLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${montserrat.className}`}>
-        <BrownArea />
-        {children}
-        <BrownArea />
+      <body
+        className={`${montserrat.className} h-screen w-screen flex flex-col`}
+      >
+        <body
+          className={`${montserrat.className} h-screen w-screen flex flex-col`}
+        >
+          <div className="h-3 w-full">
+            <BrownArea />
+          </div>
+
+          <div className="overflow-hidden">{children}</div>
+
+          <div className="h-3 w-full">
+            <BrownArea />
+          </div>
+        </body>
       </body>
     </html>
   );

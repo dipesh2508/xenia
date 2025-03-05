@@ -109,10 +109,7 @@ const data = {
 
 const SidebarChat = () => {
   return (
-    <Sidebar
-      collapsible="none"
-      className="flex flex-row overflow-hidden  max-h-screen"
-    >
+    <Sidebar collapsible="none" className="flex flex-row">
       {/* This is the first sidebar */}
       {/* We disable collapsible and adjust width to icon. */}
       {/* This will make the sidebar appear as icons. */}
@@ -139,7 +136,7 @@ const SidebarChat = () => {
         </SidebarHeader> */}
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupContent className="px-1.5 md:px-0">
+            <SidebarGroupContent className="px-1.5 md:px-0 pt-3">
               <Image src={Logo} alt="Xenia Logo" />
               {/* <SidebarMenu>
                 {data.navMain.map((item) => (
@@ -166,15 +163,18 @@ const SidebarChat = () => {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter>
+        <SidebarFooter className="pb-8">
           <Settings /> {/* <NavUser user={data.user} /> */}
         </SidebarFooter>
       </Sidebar>
 
       {/* This is the second sidebar */}
       {/* We disable collapsible and let it fill remaining space */}
-      <Sidebar collapsible="none" className="flex-1 border-l">
-        <SidebarHeader className="gap-3.5 border-b p-4">
+      <Sidebar
+        collapsible="none"
+        className="flex-1 border-l rounded-tl-2xl rounded-bl-2xl"
+      >
+        <SidebarHeader className="gap-3.5 border-b p-4 ">
           <div className="flex w-full items-center justify-between">
             <div className="text-2xl font-semibold text-foreground">
               Communities
@@ -189,8 +189,8 @@ const SidebarChat = () => {
             className="bg-[#F7F7FD]"
           />
         </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup className="px-0">
+        <SidebarContent className="rounded-bl-xl">
+          <SidebarGroup className="px-0 rounded-bl-xl">
             <SidebarGroupContent>
               {data.communities.map((group, index) => (
                 <a
