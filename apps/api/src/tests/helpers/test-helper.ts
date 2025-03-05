@@ -111,3 +111,22 @@ export class MockResponse {
     return this.clearedCookies;
   }
 }
+
+export function createRequest(options: any = {}): Request {
+  return {
+    body: {},
+    query: {},
+    params: {},
+    headers: {},
+    ...options
+  } as Request;
+}
+
+export function createResponse(): Response {
+  const res: Partial<Response> = {
+    statusCode: 200,
+    json: jest.fn().mockReturnThis(),
+    status: jest.fn().mockReturnThis()
+  };
+  return res as Response;
+}

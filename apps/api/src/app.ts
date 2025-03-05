@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import userRouter from "@/routes/user.route";
+import communityRouter from "@/routes/community.route";
 import path from "path";
 import dotenv from "dotenv";
 
@@ -26,6 +27,7 @@ app.get("/", (_, res) => {
 
 // Routes
 app.use("/api/user", userRouter);
+app.use("/api/communities", communityRouter);
 
 // Error handler middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
