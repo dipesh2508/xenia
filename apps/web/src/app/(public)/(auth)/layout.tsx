@@ -1,5 +1,6 @@
 import Image from "next/image";
 import RegisterImg from "@/assets/RegisterUser.png";
+import { Toaster } from "@repo/ui/components/ui/sonner";
 
 export default function AuthLayout({
   children,
@@ -17,6 +18,7 @@ export default function AuthLayout({
         </p>
         {children}
       </div>
+      <Toaster richColors />
     </div>
   );
 }

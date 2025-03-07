@@ -6,11 +6,12 @@ import { navLinks } from "../../constants";
 import Link from "next/link";
 import { Button } from "@repo/ui/components/ui/button";
 import { FaBars } from "react-icons/fa6";
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import MotionDiv from "@/components/animations/MotionDiv";
 import { AuthContext } from "@/context/AuthContext";
 import MotionLi from "../animations/MotionLi";
+import { cn } from "@repo/ui/lib/utils";
 
 // Parent container variants
 const containerVariants = {
@@ -54,15 +55,37 @@ const linkAnimationVariant = {
     },
   },
 };
-const leftPosition = 0 * 4.35 - 1.25;
-console.log(`Index: ${0}, Left position: ${leftPosition}rem`);
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { setShowLogin, setShowSignup } = useContext(AuthContext);
+  const [isScrolling, setIsScrolling] = useState(false);
+  let scrollTimeout: NodeJS.Timeout;
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolling(true);
+
+      // Clear previous timeout and set a new one
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => setIsScrolling(false), 200); // Adjust delay as needed
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, []);
 
   return (
-    <div className="sticky top-0 z-50 bg-gradient-to-b from-background to-white/30">
+    <div
+      className={cn(
+        "sticky top-0 z-50 transition-colors duration-500 ease-linear",
+        isScrolling
+          ? "bg-gradient-to-b from-background to-white/30"
+          : "bg-white"
+      )}
+    >
       <MotionDiv
         variants={containerVariants}
         initial="hidden"
