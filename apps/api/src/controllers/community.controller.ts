@@ -27,19 +27,32 @@ export const createCommunity = async (req: any, res: Response): Promise<void> =>
       return;
     }
 
-    const community = await prisma.community.create({
-      data: {
-        name,
-        description,
-        ...(req.file?.path && { image: req.file.path }),
-        ownerId: userId,
-        members: {
-          create: {
-            userId,
-            role: "OWNER"
+    // Create community and automatically create a chat room for it
+    const community = await prisma.$transaction(async (tx) => {
+      // Create the community
+      const newCommunity = await tx.community.create({
+        data: {
+          name,
+          description,
+          ...(req.file?.path && { image: req.file.path }),
+          ownerId: userId,
+          members: {
+            create: {
+              userId,
+              role: "OWNER"
+            }
           }
         }
-      }
+      });
+      
+      // Create a default chat room for the community
+      await tx.chat.create({
+        data: {
+          communityId: newCommunity.id
+        }
+      });
+      
+      return newCommunity;
     });
 
     res.status(201).json(community);
