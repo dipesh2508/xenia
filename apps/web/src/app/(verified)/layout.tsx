@@ -11,9 +11,7 @@ export default function ChatRoomLayout({
         <BrownArea />
       </div> */}
 
-      <div className="flex overflow-hidden bg-secondary h-screen">
-        {children}
-      </div>
+      <div className="flex bg-secondary h-screen">{children}</div>
       {/* {children} */}
 
       {/* <div className="h-3 w-full">

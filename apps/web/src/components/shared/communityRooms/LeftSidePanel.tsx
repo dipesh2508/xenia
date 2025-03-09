@@ -10,7 +10,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
 } from "@repo/ui/components/ui/sidebar";
-import { Command, Settings, Globe } from "lucide-react";
+import { MessageCircle, Globe } from "lucide-react";
 import Image from "next/image";
 import Logo from "@/assets/logoXeniaShortLightBrown.png";
 import Link from "next/link";
@@ -57,8 +57,7 @@ const LeftSidePanel = ({
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupContent className="px-1.5 md:px-0 pt-3">
-              {/* <Link href={}> */}
+            <SidebarGroupContent className="px-1.5 md:px-0 pt-3 flex flex-col justify-center items-center gap-2.5">
               <SidebarMenuButton
                 size="lg"
                 className={cn(
@@ -74,7 +73,21 @@ const LeftSidePanel = ({
                   className="text-2xl"
                 />
               </SidebarMenuButton>
-              {/* </Link> */}
+              <SidebarMenuButton
+                size="lg"
+                className={cn(
+                  "cursor-pointer flex aspect-square size-11 items-center justify-center rounded-lg hover:bg-primary-6/80 bg-primary-5/20 p-2.5 hover:text-secondary-2 data-[state=active]:",
+                  selectedPage === "chatting" &&
+                    "bg-primary-6/80 text-secondary-2",
+                  "active:bg-primary-7 active:text-secondary-3"
+                )}
+                asChild
+              >
+                <MessageCircle
+                  onClick={() => setSelectedPage("chatting")}
+                  className="text-2xl"
+                />
+              </SidebarMenuButton>
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
@@ -96,10 +109,6 @@ const LeftSidePanel = ({
               />
               <AvatarFallback className="rounded-lg">IA</AvatarFallback>
             </Avatar>
-            {/* <Settings
-              onClick={() => setSelectedPage("profile")}
-              className="text-2xl"
-            />{" "} */}
           </SidebarMenuButton>
         </SidebarFooter>
       </Sidebar>

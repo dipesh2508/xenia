@@ -1,3 +1,4 @@
+import { prisma } from "@repo/database";
 import type { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate";
 
@@ -83,7 +84,14 @@ const config = {
   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
   				border: 'hsl(var(--sidebar-border))',
   				ring: 'hsl(var(--sidebar-ring))'
-  			}
+  			},
+			chatroom: {
+				background: '#fbfaf6',
+				foreground: "#000",
+				primary: "#f0ebdf",
+				secondary: "#fffeff",
+				accent: "#C9B3F6"
+			},
   		}
   	}
   },
