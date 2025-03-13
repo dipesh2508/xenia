@@ -1,5 +1,8 @@
 import dotenv from "dotenv";
 import path from "path";
+import http from "http";
+import app from "./app";
+import { initSocketServer } from "./services/socket";
 
 // Configure dotenv to load .env file
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
@@ -10,12 +13,17 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 
-import app from "./app";
+const PORT = parseInt(process.env.PORT || "8000", 10);
 
-const port = process.env.PORT || 8000;
+// Create HTTP server
+const server = http.createServer(app);
 
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+// Initialize Socket.IO
+initSocketServer(server);
+
+// Start the server
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
 // Handle unhandled promise rejections
