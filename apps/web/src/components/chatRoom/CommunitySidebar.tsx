@@ -14,6 +14,14 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@repo/ui/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@repo/ui/components/ui/dropdown-menu";
 
 const data = {
   communities: [
@@ -82,10 +90,18 @@ const CommunitySidebar = () => {
           <div className="text-2xl font-semibold text-foreground">
             Communities
           </div>
-          {/* <Label className="flex items-center gap-2 text-sm">
-              <span>Unreads</span>
-              <Switch className="shadow-none" />
-            </Label> */}
+          <DropdownMenu>
+            <DropdownMenuTrigger className="focus:outline-none">
+              <FaEllipsisVertical className="text-slate-600" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="hover:bg-white">
+              <Link href={"/chatRoom/createCommunity"}>
+                <DropdownMenuItem className="focus:bg-chatroom-accent/10 focus:text-zinc-700">
+                  Create Community
+                </DropdownMenuItem>
+              </Link>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         <SearchForm />
       </SidebarHeader>

@@ -1,22 +1,62 @@
-import { Input } from "@repo/ui/components/ui/input";
-import React from "react";
-import { Send, Smile } from "lucide-react";
+"use client";
+
+import React, { useState } from "react";
 import CommunitySidebar from "@/components/chatRoom/CommunitySidebar";
 import { SidebarProvider, SidebarInset } from "@repo/ui/components/ui/sidebar";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@repo/ui/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/ui/tabs";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "@repo/ui/components/ui/avatar";
-import { RiSendPlaneFill } from "react-icons/ri";
+import MeChatBubble from "@/components/chatRoom/MeChatBubble";
+import RecieverChatBubble from "@/components/chatRoom/RecieverChatBubble";
+import SendMessage from "@/components/chatRoom/SendMessage";
+
+const Chat = {
+  msgs: [
+    {
+      sender: "Elsa",
+      content: "Hey Ana! How's your day going?",
+    },
+    {
+      sender: "Ana",
+      content:
+        "Hey Elsa! It's going great, just working on some projects. What about you?",
+    },
+    {
+      sender: "Elsa",
+      content:
+        "Same here! Just taking a short break. Need any help with your project?",
+    },
+    {
+      sender: "Ana",
+      content:
+        "That's nice of you! I think I'm good for now, but I'll let you know if I need anything.",
+    },
+    {
+      sender: "Elsa",
+      content: "Sounds good! Let's catch up later.",
+    },
+    {
+      sender: "Ana",
+      content: "Sure! Talk to you soon. 😊",
+    },
+  ],
+};
+
+interface msg {
+  sender: string;
+  content: string;
+}
+
+interface chat {
+  chats: msg[];
+}
 
 const RoomSidebar = () => {
+  const [msgs, setMsgs] = useState<chat>({ chats: [] });
+
   return (
     <div>
       <SidebarProvider
@@ -27,9 +67,8 @@ const RoomSidebar = () => {
         }
       >
         <CommunitySidebar />
-        <SidebarInset className="bg-[#FBFAF6] rounded-tr-xl rounded-br-xl overflow-y-auto flex-1 h-full max-h-[calc(100vh-32px)]">
-          <header className="sticky top-0 flex shrink-0 items-center gap-2 border-b bg-background p-4 justify-between">
-            {/* <header className="flex h-16 shrink-0 items-center gap-2 sticky top-0"> */}
+        <SidebarInset className="bg-[#FBFAF6] rounded-tr-xl rounded-br-xl flex-1 h-screen max-h-[calc(100vh-32px)] flex flex-col">
+          <header className="sticky top-0 flex shrink-0 items-center gap-2 border-b bg-background px-3.5 py-2 justify-between">
             <div className="flex items-center justify-between">
               <Avatar className="h-11 w-11 rounded-full">
                 <AvatarImage
@@ -49,39 +88,43 @@ const RoomSidebar = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 px-4">
-              <Tabs defaultValue="chat">
+            <div className="flex items-center gap-2">
+              <Tabs defaultValue="message">
                 <TabsList className="bg-chatroom-accent/10">
-                  <TabsTrigger value="Message">Message</TabsTrigger>
+                  <TabsTrigger value="message">Message</TabsTrigger>
                   <TabsTrigger value="canvas">Canvas</TabsTrigger>
                   <TabsTrigger value="Docs">Doc Room</TabsTrigger>
                 </TabsList>
-                {/* <TabsContent value="chat">
-                  Change your password here.
-                </TabsContent>
-                <TabsContent value="canvas">
-                  Make changes to your account here.
-                </TabsContent>
-                <TabsContent value="docs">
-                  Change your password here.
-                </TabsContent> */}
               </Tabs>
             </div>
           </header>
 
-          <div className="h-full">Chat</div>
-
-          <div className="flex w-full px-6 py-4 bg-white gap-2 items-center">
-            <Smile className="text-indigo-950" />
-
-            <Input
-              placeholder="Type your message"
-              className="bg-chatroom-accent/10 rounded-xl"
-            />
-            <div className="bg-chatroom-accent p-2 rounded-xl text-white">
-              <RiSendPlaneFill />
+          {/* Chat area with flex-grow to take available space */}
+          <div className="flex-grow overflow-hidden flex flex-col">
+            {/* This div handles scrolling */}
+            <div className="h-full w-full overflow-y-auto">
+              {/* Reversed column layout to start from bottom */}
+              <div className="min-h-full flex flex-col-reverse px-4">
+                <div className="flex flex-col gap-2 pb-2 mb-1">
+                  {msgs.chats.map((item, index) =>
+                    item.sender == "Elsa" ? (
+                      <MeChatBubble
+                        key={`${item.content}-${index}`}
+                        content={item.content}
+                      />
+                    ) : (
+                      <RecieverChatBubble
+                        key={`${item.content}-${index}`}
+                        content={item.content}
+                      />
+                    )
+                  )}
+                </div>
+              </div>
             </div>
           </div>
+
+          <SendMessage msgs={msgs} setMsgs={setMsgs} />
           {/* <div className="flex flex-1 flex-col gap-4 p-4">
                       {Array.from({ length: 24 }).map((_, index) => (
                         <div

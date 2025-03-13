@@ -17,10 +17,7 @@ const InsetLeftPanel = () => {
     useState<keyof typeof pages>("chatting");
   return (
     <SidebarProvider>
-      <LeftSidePanel
-        setSelectedPage={setSelectedPage}
-        selectedPage={selectedPage}
-      />
+      <LeftSidePanel />
 
       <SidebarInset className="flex bg-[#FBFAF6] m-4 ml-0 rounded-xl flex-1 overflow-hidden">
         {pages[selectedPage] ?? <RoomSidebar />}

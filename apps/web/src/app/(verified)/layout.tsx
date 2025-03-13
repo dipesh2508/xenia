@@ -1,4 +1,5 @@
-import BrownArea from "@/components/shared/communityRooms/BrownArea";
+import { SidebarProvider, SidebarInset } from "@repo/ui/components/ui/sidebar";
+import LeftSidePanel from "@/components/shared/communityRooms/LeftSidePanel";
 
 export default function ChatRoomLayout({
   children,
@@ -6,17 +7,14 @@ export default function ChatRoomLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <>
-      {/* <div className="h-3 w-full">
-        <BrownArea />
-      </div> */}
+    <div className="flex bg-secondary h-screen">
+      <SidebarProvider>
+        <LeftSidePanel />
 
-      <div className="flex bg-secondary h-screen">{children}</div>
-      {/* {children} */}
-
-      {/* <div className="h-3 w-full">
-        <BrownArea />
-      </div> */}
-    </>
+        <SidebarInset className="flex bg-[#FBFAF6] m-4 ml-0 rounded-xl flex-1 overflow-hidden">
+          {children}
+        </SidebarInset>
+      </SidebarProvider>
+    </div>
   );
 }

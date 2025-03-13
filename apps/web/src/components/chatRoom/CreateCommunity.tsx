@@ -122,7 +122,7 @@ const CreateCommunity = () => {
   }
   return (
     <>
-      <Card className="p-1 lg:p-2 lg:mx-24 mx-2 lg:my-8 mt-6 mb-10 text-primary-9 shadow-md shadow-primary-1">
+      <Card className="p-1 lg:p-2 lg:mx-48 mx-2 lg:my-8 mt-6 mb-10 text-primary-9 shadow-md shadow-primary-1">
         <CardContent>
           <Form {...form}>
             <form
