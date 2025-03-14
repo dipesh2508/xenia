@@ -1,7 +1,11 @@
-import React from "react";
+import ExploreComps from "@/components/Explore/ExploreComps";
 
 const page = () => {
-  return <div>Explore</div>;
+  return (
+    <>
+      <ExploreComps />
+    </>
+  );
 };
 
 export default page;

@@ -11,7 +11,7 @@ export default function ChatRoomLayout({
       <SidebarProvider>
         <LeftSidePanel />
 
-        <SidebarInset className="flex bg-[#FBFAF6] m-4 ml-0 rounded-xl flex-1 overflow-hidden">
+        <SidebarInset className="flex bg-background m-4 ml-0 rounded-xl flex-1 overflow-hidden">
           {children}
         </SidebarInset>
       </SidebarProvider>
