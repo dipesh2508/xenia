@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { User } from "@repo/database/types";
+import { User } from "@/types";
 import { Response } from "express";
 
 /**

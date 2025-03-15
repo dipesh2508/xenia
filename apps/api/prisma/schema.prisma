@@ -1,0 +1,96 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+enum CommunityRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model User {
+  id            String             @id @default(cuid())
+  name          String
+  email         String             @unique
+  password      String
+  image         String?
+  emailVerified Boolean            @default(false)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  communities   CommunitiesOnUsers[]
+  ownedCommunities Community[]     @relation("CommunityOwner")
+  messages      Message[]
+  resources     Resource[]
+}
+
+model Community {
+  id          String             @id @default(cuid())
+  name        String
+  description String?
+  image       String?
+  ownerId     String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  owner       User               @relation("CommunityOwner", fields: [ownerId], references: [id])
+  members     CommunitiesOnUsers[]
+  chats       Chat[]
+  messages    Message[]
+  resources   Resource[]
+}
+
+model CommunitiesOnUsers {
+  communityId String
+  userId      String
+  role        CommunityRole      @default(MEMBER)
+  joinedAt    DateTime           @default(now())
+
+  community   Community          @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([communityId, userId])
+}
+
+model Chat {
+  id          String             @id @default(cuid())
+  communityId String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  community   Community          @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  messages    Message[]
+}
+
+model Message {
+  id          String             @id @default(cuid())
+  content     String
+  senderId    String
+  communityId String?
+  chatId      String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  sender      User               @relation(fields: [senderId], references: [id])
+  community   Community?         @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  chat        Chat?              @relation(fields: [chatId], references: [id], onDelete: Cascade)
+}
+
+model Resource {
+  id          String             @id @default(cuid())
+  title       String
+  content     String?
+  ownerId     String
+  communityId String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  owner       User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  community   Community          @relation(fields: [communityId], references: [id], onDelete: Cascade)
+}
