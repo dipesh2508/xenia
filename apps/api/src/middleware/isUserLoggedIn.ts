@@ -22,10 +22,10 @@ export const isLoggedIn = async (
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET) as {
-      userId: User["id"];
+      id: User["id"];
     };
 
-    if (!decoded.userId) {
+    if (!decoded.id) {
       return res.status(401).json({
         message: "Unauthorized",
       });
@@ -33,7 +33,7 @@ export const isLoggedIn = async (
 
     const user = await prisma.user.findUnique({
       where: {
-        id: decoded.userId,
+        id: decoded.id,
       },
       select: {
         id: true,

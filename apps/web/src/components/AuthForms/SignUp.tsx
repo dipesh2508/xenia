@@ -16,6 +16,8 @@ import { Input } from "@repo/ui/components/ui/input";
 import { Card, CardContent } from "@repo/ui/components/ui/card";
 import { FaSpinner } from "react-icons/fa6";
 import { useApi } from "@/hooks/useApi";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 const formSchema = z
   .object({
@@ -35,21 +37,36 @@ const formSchema = z
     path: ["confirmPassword"],
   });
 
+interface response {
+  id: string;
+  name: string;
+  email: string;
+}
+
 const SignUp = () => {
+  const router = useRouter();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       username: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
     },
   });
 
   const { mutate, error, isLoading } = useApi("/user/signup", {
     method: "POST",
-    onSuccess: (data) => {
+    onSuccess: (data: response) => {
       // console.log(data);
+      toast.success(`Welcome ${data.name}!`, {
+        description: "Successfull Signup",
+      });
+      router.push("/");
     },
     onError: (error) => {
-      console.log(error);
+      toast.error(error.message);
+      // console.error(error);
     },
   });
 
