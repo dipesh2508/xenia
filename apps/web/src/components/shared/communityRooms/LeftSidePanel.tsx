@@ -52,7 +52,7 @@ const LeftSidePanel = () => {
         <SidebarContent>
           <SidebarGroup>
             <SidebarGroupContent className="px-1.5 md:px-0 pt-3 flex flex-col justify-center items-center gap-2.5">
-              <Link href={"/chat-room/explore"}>
+              <Link href={"/explore"}>
                 <SidebarMenuButton
                   size="lg"
                   className={cn(
@@ -91,7 +91,7 @@ const LeftSidePanel = () => {
         </SidebarContent>
         <Separator className="w-8 bg-secondary-4 mb-2" />
         <SidebarFooter>
-          <Link href={"/chat-room/profile"}>
+          <Link href={"/profile"}>
             <SidebarMenuButton size="lg" className="p-0" asChild>
               <Avatar
                 className="h-8 w-8 rounded-lg"

@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import {
   Sidebar,
@@ -110,7 +111,7 @@ const CommunitySidebar = () => {
     data: communities,
     error: getError,
     isLoading: getLoading,
-  } = useApi<Communities>(`/communities`, {
+  } = useApi<Communities>(`/communities/user`, {
     method: "GET",
     // enabled: !!,
     // dependencies: [],
@@ -126,10 +127,6 @@ const CommunitySidebar = () => {
       });
     },
   });
-
-  const updateUrlBrowser = (id: string) => {
-    router.push(`/chat-room/${id}`);
-  };
 
   if (getLoading) return <p>Loading...</p>;
   if (getError) return <p>Error: {getError.message}</p>;
@@ -148,7 +145,7 @@ const CommunitySidebar = () => {
               <FaEllipsisVertical className="text-slate-600" />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="hover:bg-white">
-              <Link href={"/chatRoom/createCommunity"}>
+              <Link href={"/create-community"}>
                 <DropdownMenuItem className="focus:bg-chatroom-accent/10 focus:text-zinc-700">
                   Create Community
                 </DropdownMenuItem>
@@ -164,10 +161,9 @@ const CommunitySidebar = () => {
             {communities?.map((group, index) => (
               <div key={index}>
                 <Link
-                  href={`/chat-room/${group.id}`}
+                  href={`/chat-room/chats/${group.id}`}
                   key={index}
                   className="flex items-center justify-center hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  // onClick={() => updateUrlBrowser(group.id)}
                 >
                   <Avatar className="h-14 w-14 rounded-full">
                     <AvatarImage

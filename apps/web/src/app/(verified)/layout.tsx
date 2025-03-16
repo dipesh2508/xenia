@@ -5,7 +5,7 @@ import { useApi } from "@/hooks/useApi";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-export default function ChatRoomLayout({
+export default function VerifiedLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
