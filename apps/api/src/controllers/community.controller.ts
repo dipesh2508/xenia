@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { prisma } from "@repo/database";
+import { prisma } from "@/utils/prisma";
 import { deleteImage, getPublicIdFromUrl } from "@/utils/cloudinary";
 
 export const createCommunity = async (req: any, res: Response): Promise<void> => {
