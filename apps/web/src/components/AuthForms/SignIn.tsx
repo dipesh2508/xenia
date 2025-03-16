@@ -19,6 +19,8 @@ import { useState } from "react";
 import { FaEyeSlash } from "react-icons/fa6";
 import { useApi } from "@/hooks/useApi";
 import { FaSpinner } from "react-icons/fa6";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 const formSchema = z.object({
   email: z.string().email({
@@ -29,7 +31,14 @@ const formSchema = z.object({
   }),
 });
 
+interface response {
+  id: string;
+  name: string;
+  email: string;
+}
+
 const SignIn = () => {
+  const router = useRouter();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: { email: "", password: "" },
@@ -37,11 +46,16 @@ const SignIn = () => {
 
   const { mutate, error, isLoading } = useApi("/user/login", {
     method: "POST",
-    onSuccess: (data) => {
+    onSuccess: (data: response) => {
       // console.log(data);
+      toast.success(`Welcome back ${data.name}!`, {
+        description: "Let's gooo!",
+      });
+      router.push("/");
     },
     onError: (error) => {
-      console.log(error);
+      toast.error(error.message);
+      // console.error(error);
     },
   });
 

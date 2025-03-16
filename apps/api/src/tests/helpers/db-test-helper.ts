@@ -1,4 +1,4 @@
-import { prisma } from "@repo/database";
+import { prisma } from "@/utils/prisma";
 import bcrypt from "bcrypt";
 
 /**

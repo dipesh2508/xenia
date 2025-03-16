@@ -1,5 +1,5 @@
-import { prisma } from "@repo/database";
-import { User } from "@repo/database/types";
+import { prisma } from "@/utils/prisma";
+import { User } from "@/types";
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 

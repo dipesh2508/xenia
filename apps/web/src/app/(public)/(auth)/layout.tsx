@@ -1,7 +1,8 @@
 import Image from "next/image";
 import RegisterImg from "@/assets/RegisterUser.png";
+import { Toaster } from "@repo/ui/components/ui/sonner";
 
-export default function RootLayout({
+export default function AuthLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
@@ -17,6 +18,7 @@ export default function RootLayout({
         </p>
         {children}
       </div>
+      <Toaster richColors />
     </div>
   );
 }
