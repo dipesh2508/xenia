@@ -54,7 +54,7 @@ interface chat {
   chats: msg[];
 }
 
-const RoomSidebar = () => {
+const Page = () => {
   const [msgs, setMsgs] = useState<chat>({ chats: [] });
 
   return (
@@ -139,4 +139,4 @@ const RoomSidebar = () => {
   );
 };
 
-export default RoomSidebar;
+export default Page;

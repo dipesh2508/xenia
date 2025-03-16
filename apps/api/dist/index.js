@@ -192,14 +192,14 @@ var isLoggedIn = async (req, res, next) => {
       throw new Error("JWT_SECRET is not defined");
     }
     const decoded = jwt__default.default.verify(token, process.env.JWT_SECRET);
-    if (!decoded.userId) {
+    if (!decoded.id) {
       return res.status(401).json({
         message: "Unauthorized"
       });
     }
     const user = await prisma.user.findUnique({
       where: {
-        id: decoded.userId
+        id: decoded.id
       },
       select: {
         id: true,
@@ -228,7 +228,7 @@ var router = express3__default.default.Router();
 router.route("/signup").post(userSignup);
 router.route("/login").post(userLogin);
 router.route("/logout").post(logout);
-router.route("/checkAuth").post(isLoggedIn, checkAuth);
+router.route("/checkAuth").get(isLoggedIn, checkAuth);
 router.route("/:id").delete(isLoggedIn, deleteUser);
 var user_route_default = router;
 cloudinary.v2.config({
