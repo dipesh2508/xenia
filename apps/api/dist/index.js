@@ -494,7 +494,9 @@ var joinCommunity = async (req, res) => {
       res.status(404).json({ message: "Community not found" });
       return;
     }
-    const existingMembership = community.members.find((m) => m.userId === userId);
+    const existingMembership = community.members.find(
+      (m) => m.userId === userId
+    );
     if (existingMembership) {
       res.status(400).json({ message: "User is already a member of this community" });
       return;
@@ -615,11 +617,57 @@ var getCommunityMembers = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+var getUserCommunities = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+    const communities = await prisma.communitiesOnUsers.findMany({
+      where: { userId },
+      include: {
+        community: {
+          include: {
+            _count: {
+              select: {
+                members: true
+              }
+            },
+            chats: {
+              include: {
+                messages: {
+                  take: 1,
+                  orderBy: {
+                    createdAt: "desc"
+                  },
+                  include: {
+                    sender: {
+                      select: {
+                        id: true,
+                        name: true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+    res.status(200).json(communities);
+  } catch (error) {
+    console.error("Get User Communities Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 // src/routes/community.route.ts
 var router2 = express3__default.default.Router();
 router2.post("/", isLoggedIn, upload.optional().single("image"), createCommunity);
 router2.get("/", getAllCommunities);
+router2.get("/user", isLoggedIn, getUserCommunities);
 router2.get("/:id", getCommunity);
 router2.put("/:id", isLoggedIn, upload.optional().single("image"), updateCommunity);
 router2.delete("/:id", isLoggedIn, deleteCommunity);
