@@ -2,7 +2,7 @@
 import ExploreCards from "@/components/Explore/ExploreCards";
 import ExploreSearch from "@/components/Explore/ExploreSearch";
 import { useApi } from "@/hooks/useApi";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import React, { useState } from "react";
 import LogoFull from "@/assets/logo-full-xenia-slate.svg";
 import Image from "next/image";
@@ -92,7 +92,6 @@ const ExploreComps = () => {
           <NoCommunitiesFound />
         )}
       </div>
-      <Toaster />
     </>
   );
 };

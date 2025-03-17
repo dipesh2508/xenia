@@ -8,7 +8,8 @@ import {
   deleteCommunity,
   joinCommunity,
   leaveCommunity,
-  getCommunityMembers
+  getCommunityMembers,
+  getUserCommunities
 } from "@/controllers/community.controller";
 import { isLoggedIn } from "@/middleware/isUserLoggedIn";
 
@@ -16,6 +17,7 @@ const router = express.Router();
 
 router.post("/", isLoggedIn, upload.optional().single('image'), createCommunity);
 router.get("/", getAllCommunities);
+router.get("/user", isLoggedIn, getUserCommunities);
 router.get("/:id", getCommunity);
 router.put("/:id", isLoggedIn, upload.optional().single('image'), updateCommunity);
 router.delete("/:id", isLoggedIn, deleteCommunity);

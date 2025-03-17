@@ -1,29 +1,9 @@
-// "use client";
-
-// import RootLayout from "@/app/layouts/RootLayout";
-// import { usePathname } from "next/navigation";
-// import "./globals.css";
-// import "@repo/ui/globals.css";
-
-// export default function Layout({ children }: { children: React.ReactNode }) {
-//   const pathname = usePathname();
-
-//   // If inside /dashboard, do NOT wrap with RootLayout
-//   if (pathname.startsWith("/chatRoom")) {
-//     return <>{children}</>;
-//   }
-
-//   // Otherwise, wrap with RootLayout
-//   return <RootLayout>{children}</RootLayout>;
-// }
-
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
-import Navbar from "@/components/shared/Navbar";
-import Footer from "@/components/shared/Footer";
 import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
 import "@repo/ui/globals.css";
+import { Toaster } from "sonner";
 
 const montserrat = Montserrat({ subsets: ["latin"] });
 
@@ -54,6 +34,7 @@ export default function RootLayout({
           className={`${montserrat.className} bg-background text-foreground overflow-visible`}
         >
           {children}
+          <Toaster richColors />
         </body>
       </AuthProvider>
     </html>

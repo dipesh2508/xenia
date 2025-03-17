@@ -10,6 +10,7 @@ import {
 } from "@repo/ui/components/ui/card";
 import Image from "next/image";
 import { Button } from "@repo/ui/components/ui/button";
+import { join } from "path";
 
 interface Owner {
   id: string;
@@ -34,6 +35,10 @@ interface Community {
 }
 
 const ExploreCards = ({ data }: { data: Community }) => {
+  const joinCommunity = () => {
+    console.log("Joining community");
+    //add joining logic here send data to community endpt will join as member
+  };
   return (
     <Card className="rounded-3xl relative bg-cover bg-center text-white overflow-hidden text-center pt-36 px-8 pb-2">
       <div className="absolute inset-0 z-0 rounded-3xl">
@@ -46,7 +51,10 @@ const ExploreCards = ({ data }: { data: Community }) => {
       </div>
       <div className="absolute inset-0 bg-black/60 z-10 rounded-3xl"></div>
       <CardHeader className="z-20 relative mx-2">
-        <Button className="border-chatroom-secondary border-2 hover:bg-white/10 bg-transparent rounded-xl">
+        <Button
+          className="border-chatroom-secondary border-2 hover:bg-white/10 bg-transparent rounded-xl"
+          onClick={() => joinCommunity}
+        >
           Join
         </Button>
       </CardHeader>

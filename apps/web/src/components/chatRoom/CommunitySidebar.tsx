@@ -1,3 +1,4 @@
+"use client";
 import React from "react";
 import {
   Sidebar,
@@ -18,10 +19,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@repo/ui/components/ui/dropdown-menu";
+import { useApi } from "@/hooks/useApi";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 const data = {
   communities: [
@@ -79,7 +81,55 @@ const data = {
     },
   ],
 };
+
+interface Owner {
+  id: string;
+  image: string | null;
+  name: string;
+}
+
+interface CountInfo {
+  members: number;
+}
+
+interface Community {
+  createdAt: string;
+  description: string;
+  id: string;
+  image: string | null;
+  name: string;
+  owner: Owner;
+  ownerId: string;
+  updatedAt: string;
+  _count: CountInfo;
+}
+
+type Communities = Community[];
 const CommunitySidebar = () => {
+  const router = useRouter();
+  const {
+    data: communities,
+    error: getError,
+    isLoading: getLoading,
+  } = useApi<Communities>(`/communities/user`, {
+    method: "GET",
+    // enabled: !!,
+    // dependencies: [],
+    onSuccess: (data) => {
+      console.log(data);
+      toast.success("Communities", {
+        description: `Communities fetched successfully`,
+      });
+    },
+    onError: (error) => {
+      toast.error("Community not fetched successfully", {
+        description: error.message,
+      });
+    },
+  });
+
+  if (getLoading) return <p>Loading...</p>;
+  if (getError) return <p>Error: {getError.message}</p>;
   return (
     <Sidebar
       collapsible="none"
@@ -95,7 +145,7 @@ const CommunitySidebar = () => {
               <FaEllipsisVertical className="text-slate-600" />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="hover:bg-white">
-              <Link href={"/chatRoom/createCommunity"}>
+              <Link href={"/create-community"}>
                 <DropdownMenuItem className="focus:bg-chatroom-accent/10 focus:text-zinc-700">
                   Create Community
                 </DropdownMenuItem>
@@ -108,10 +158,10 @@ const CommunitySidebar = () => {
       <SidebarContent className="rounded-bl-xl">
         <SidebarGroup className="px-1 rounded-bl-xl">
           <SidebarGroupContent>
-            {data.communities.map((group, index) => (
+            {communities?.map((group, index) => (
               <div key={index}>
                 <Link
-                  href="#"
+                  href={`/chat-room/chats/${group.id}`}
                   key={index}
                   className="flex items-center justify-center hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 >
@@ -125,14 +175,14 @@ const CommunitySidebar = () => {
                   <div className="flex flex-col items-start gap-2 whitespace-nowrap p-4 pr-0 text-sm leading-tight">
                     <div className="flex w-full items-center gap-2">
                       <span className="text-foreground font-medium">
-                        {group.groupname}
+                        {group.name}
                       </span>{" "}
-                      <span className="ml-auto text-xs">{group.date}</span>
+                      <span className="ml-auto text-xs">time - last msg</span>
                     </div>
                     {/* <span className="font-medium">{group.subject}</span> */}
                     <div className="flex w-full items-center justify-between">
                       <span className="line-clamp-2 w-[260px] whitespace-break-spaces text-xs">
-                        {group.teaser}
+                        {`Display last msg, for now grp description ${group.description}`}
                       </span>
                       <FaEllipsisVertical className="text-foreground/30" />
                     </div>

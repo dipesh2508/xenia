@@ -2,24 +2,29 @@ import { Request, Response } from "express";
 import { prisma } from "@/utils/prisma";
 import { deleteImage, getPublicIdFromUrl } from "@/utils/cloudinary";
 
-export const createCommunity = async (req: any, res: Response): Promise<void> => {
+export const createCommunity = async (
+  req: any,
+  res: Response
+): Promise<void> => {
   try {
     const { name, description } = req.body;
     const userId = req.user.id;
-    
+
     if (!name) {
       res.status(400).json({ message: "Community name is required" });
       return;
     }
 
     if (name.length > 100) {
-      res.status(400).json({ message: "Community name must be less than 100 characters" });
+      res
+        .status(400)
+        .json({ message: "Community name must be less than 100 characters" });
       return;
     }
 
     // Check for existing community with same name
     const existingCommunity = await prisma.community.findFirst({
-      where: { name }
+      where: { name },
     });
 
     if (existingCommunity) {
@@ -36,10 +41,10 @@ export const createCommunity = async (req: any, res: Response): Promise<void> =>
         members: {
           create: {
             userId,
-            role: "OWNER"
-          }
-        }
-      }
+            role: "OWNER",
+          },
+        },
+      },
     });
 
     res.status(201).json(community);
@@ -49,7 +54,10 @@ export const createCommunity = async (req: any, res: Response): Promise<void> =>
   }
 };
 
-export const getCommunity = async (req: Request, res: Response): Promise<void> => {
+export const getCommunity = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -61,10 +69,10 @@ export const getCommunity = async (req: Request, res: Response): Promise<void> =
             id: true,
             name: true,
             email: true,
-            image: true
-          }
-        }
-      }
+            image: true,
+          },
+        },
+      },
     });
 
     if (!community) {
@@ -79,19 +87,24 @@ export const getCommunity = async (req: Request, res: Response): Promise<void> =
   }
 };
 
-export const getAllCommunities = async (req: Request, res: Response): Promise<void> => {
+export const getAllCommunities = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = req.query.search as string;
     const skip = (page - 1) * limit;
 
-    const where = search ? {
-      name: {
-        contains: search,
-        mode: 'insensitive' as const
-      }
-    } : {};
+    const where = search
+      ? {
+          name: {
+            contains: search,
+            mode: "insensitive" as const,
+          },
+        }
+      : {};
 
     if (req.query.page || req.query.limit || req.query.search) {
       // Return paginated response when query params are present
@@ -105,23 +118,23 @@ export const getAllCommunities = async (req: Request, res: Response): Promise<vo
               select: {
                 id: true,
                 name: true,
-                image: true
-              }
+                image: true,
+              },
             },
             _count: {
               select: {
-                members: true
-              }
-            }
-          }
+                members: true,
+              },
+            },
+          },
         }),
-        prisma.community.count({ where })
+        prisma.community.count({ where }),
       ]);
 
       res.status(200).json({
         communities,
         total,
-        hasMore: total > skip + limit
+        hasMore: total > skip + limit,
       });
     } else {
       // Return all communities when no query params are present
@@ -131,15 +144,15 @@ export const getAllCommunities = async (req: Request, res: Response): Promise<vo
             select: {
               id: true,
               name: true,
-              image: true
-            }
+              image: true,
+            },
           },
           _count: {
             select: {
-              members: true
-            }
-          }
-        }
+              members: true,
+            },
+          },
+        },
       });
 
       res.status(200).json(communities);
@@ -150,14 +163,17 @@ export const getAllCommunities = async (req: Request, res: Response): Promise<vo
   }
 };
 
-export const updateCommunity = async (req: any, res: Response): Promise<void> => {
+export const updateCommunity = async (
+  req: any,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
     const { name, description } = req.body;
     const userId = req.user.id;
 
     const community = await prisma.community.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!community) {
@@ -166,7 +182,9 @@ export const updateCommunity = async (req: any, res: Response): Promise<void> =>
     }
 
     if (community.ownerId !== userId) {
-      res.status(403).json({ message: "Not authorized to update this community" });
+      res
+        .status(403)
+        .json({ message: "Not authorized to update this community" });
       return;
     }
 
@@ -174,8 +192,8 @@ export const updateCommunity = async (req: any, res: Response): Promise<void> =>
       const existingCommunity = await prisma.community.findFirst({
         where: {
           name,
-          id: { not: id }
-        }
+          id: { not: id },
+        },
       });
 
       if (existingCommunity) {
@@ -195,8 +213,8 @@ export const updateCommunity = async (req: any, res: Response): Promise<void> =>
       data: {
         name,
         description,
-        ...(req.file?.path && { image: req.file.path })
-      }
+        ...(req.file?.path && { image: req.file.path }),
+      },
     });
 
     res.status(200).json(updatedCommunity);
@@ -206,13 +224,16 @@ export const updateCommunity = async (req: any, res: Response): Promise<void> =>
   }
 };
 
-export const deleteCommunity = async (req: any, res: Response): Promise<void> => {
+export const deleteCommunity = async (
+  req: any,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
     const community = await prisma.community.findUnique({
-      where: { id }
+      where: { id },
     });
 
     if (!community) {
@@ -221,7 +242,9 @@ export const deleteCommunity = async (req: any, res: Response): Promise<void> =>
     }
 
     if (community.ownerId !== userId) {
-      res.status(403).json({ message: "Not authorized to delete this community" });
+      res
+        .status(403)
+        .json({ message: "Not authorized to delete this community" });
       return;
     }
 
@@ -232,7 +255,7 @@ export const deleteCommunity = async (req: any, res: Response): Promise<void> =>
     }
 
     await prisma.community.delete({
-      where: { id }
+      where: { id },
     });
 
     res.status(200).json({ message: "Community deleted successfully" });
@@ -250,8 +273,8 @@ export const joinCommunity = async (req: any, res: Response): Promise<void> => {
     const community = await prisma.community.findUnique({
       where: { id },
       include: {
-        members: true
-      }
+        members: true,
+      },
     });
 
     if (!community) {
@@ -259,9 +282,13 @@ export const joinCommunity = async (req: any, res: Response): Promise<void> => {
       return;
     }
 
-    const existingMembership = community.members.find(m => m.userId === userId);
+    const existingMembership = community.members.find(
+      (m) => m.userId === userId
+    );
     if (existingMembership) {
-      res.status(400).json({ message: "User is already a member of this community" });
+      res
+        .status(400)
+        .json({ message: "User is already a member of this community" });
       return;
     }
 
@@ -269,8 +296,8 @@ export const joinCommunity = async (req: any, res: Response): Promise<void> => {
       data: {
         communityId: id,
         userId,
-        role: "MEMBER"
-      }
+        role: "MEMBER",
+      },
     });
 
     res.status(200).json(membership);
@@ -280,7 +307,10 @@ export const joinCommunity = async (req: any, res: Response): Promise<void> => {
   }
 };
 
-export const leaveCommunity = async (req: any, res: Response): Promise<void> => {
+export const leaveCommunity = async (
+  req: any,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
@@ -288,8 +318,8 @@ export const leaveCommunity = async (req: any, res: Response): Promise<void> => 
     const community = await prisma.community.findUnique({
       where: { id },
       include: {
-        members: true
-      }
+        members: true,
+      },
     });
 
     if (!community) {
@@ -302,9 +332,11 @@ export const leaveCommunity = async (req: any, res: Response): Promise<void> => 
       return;
     }
 
-    const membership = community.members.find(m => m.userId === userId);
+    const membership = community.members.find((m) => m.userId === userId);
     if (!membership) {
-      res.status(400).json({ message: "User is not a member of this community" });
+      res
+        .status(400)
+        .json({ message: "User is not a member of this community" });
       return;
     }
 
@@ -312,9 +344,9 @@ export const leaveCommunity = async (req: any, res: Response): Promise<void> => 
       where: {
         communityId_userId: {
           communityId: id,
-          userId
-        }
-      }
+          userId,
+        },
+      },
     });
 
     res.status(200).json({ message: "Left community successfully" });
@@ -324,10 +356,13 @@ export const leaveCommunity = async (req: any, res: Response): Promise<void> => 
   }
 };
 
-export const getCommunityMembers = async (req: Request, res: Response): Promise<void> => {
+export const getCommunityMembers = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
-    
+
     if (req.query.page || req.query.limit) {
       // Paginated response when page/limit is specified
       const page = parseInt(req.query.page as string) || 1;
@@ -345,26 +380,26 @@ export const getCommunityMembers = async (req: Request, res: Response): Promise<
                 id: true,
                 name: true,
                 email: true,
-                image: true
-              }
-            }
-          }
+                image: true,
+              },
+            },
+          },
         }),
         prisma.communitiesOnUsers.count({
-          where: { communityId: id }
-        })
+          where: { communityId: id },
+        }),
       ]);
 
       res.status(200).json({
-        members: members.map(member => ({
+        members: members.map((member) => ({
           id: member.user.id,
           name: member.user.name,
           email: member.user.email,
           image: member.user.image,
-          role: member.role
+          role: member.role,
         })),
         total,
-        hasMore: total > skip + limit
+        hasMore: total > skip + limit,
       });
     } else {
       // Simple array response for non-paginated requests (what the test expects)
@@ -376,25 +411,76 @@ export const getCommunityMembers = async (req: Request, res: Response): Promise<
               id: true,
               name: true,
               email: true,
-              image: true
-            }
-          }
-        }
+              image: true,
+            },
+          },
+        },
       });
 
       // Format the response as a flat array of user objects with roles
-      const formattedMembers = members.map(member => ({
+      const formattedMembers = members.map((member) => ({
         id: member.user.id,
         name: member.user.name,
         email: member.user.email,
         image: member.user.image,
-        role: member.role
+        role: member.role,
       }));
 
       res.status(200).json(formattedMembers);
     }
   } catch (error) {
     console.error("Get Community Members Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const getUserCommunities = async (
+  req: any,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = req.user.id;
+
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+    const communities = await prisma.communitiesOnUsers.findMany({
+      where: { userId },
+      include: {
+        community: {
+          include: {
+            _count: {
+              select: {
+                members: true,
+              },
+            },
+            chats: {
+              include: {
+                messages: {
+                  take: 1,
+                  orderBy: {
+                    createdAt: "desc",
+                  },
+                  include: {
+                    sender: {
+                      select: {
+                        id: true,
+                        name: true
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    res.status(200).json(communities);
+  } catch (error) {
+    console.error("Get User Communities Error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
