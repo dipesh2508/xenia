@@ -1243,23 +1243,34 @@ if (!process.env.JWT_SECRET) {
 var PORT = parseInt(process.env.PORT || "8000", 10);
 var server = http__default.default.createServer(app_default);
 initSocketServer(server);
-checkDatabaseConnection().then((isConnected) => {
-  if (!isConnected) {
-    console.warn("Warning: Initial database connection check failed. Will retry automatically.");
+var MAX_RETRIES = 5;
+var RETRY_INTERVAL = 5e3;
+var connectWithRetry = async (retryCount = 0) => {
+  try {
+    const isConnected = await checkDatabaseConnection();
+    if (isConnected) {
+      console.log("Database connection successful");
+      server.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+        console.log(`Socket.IO server running alongside HTTP server`);
+      });
+    } else {
+      throw new Error("Database connection check failed");
+    }
+  } catch (error) {
+    console.error(`Database connection attempt ${retryCount + 1} failed:`, error);
+    if (retryCount < MAX_RETRIES) {
+      console.log(`Retrying in ${RETRY_INTERVAL / 1e3} seconds...`);
+      setTimeout(() => connectWithRetry(retryCount + 1), RETRY_INTERVAL);
+    } else {
+      console.error("Max connection attempts reached. Starting server in offline mode...");
+      server.listen(PORT, () => {
+        console.log(`Server running on port ${PORT} (Database unavailable)`);
+      });
+    }
   }
-  server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`REST API available at http://localhost:${PORT}`);
-    console.log(`Socket.IO server running alongside HTTP server`);
-  });
-}).catch((error) => {
-  console.error("Failed to perform initial database connection check:", error);
-  server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`REST API available at http://localhost:${PORT}`);
-    console.log(`Socket.IO server running alongside HTTP server`);
-  });
-});
+};
+connectWithRetry();
 var gracefulShutdown = async () => {
   console.log("Shutting down gracefully...");
   server.close(() => {

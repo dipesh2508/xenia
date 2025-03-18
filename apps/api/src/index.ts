@@ -22,29 +22,39 @@ const server = http.createServer(app);
 // Initialize Socket.IO with the server
 initSocketServer(server);
 
-// Perform initial database connection check
-checkDatabaseConnection()
-  .then(isConnected => {
-    if (!isConnected) {
-      console.warn("Warning: Initial database connection check failed. Will retry automatically.");
+// Perform initial database connection check with retry
+const MAX_RETRIES = 5;
+const RETRY_INTERVAL = 5000;
+
+const connectWithRetry = async (retryCount = 0): Promise<void> => {
+  try {
+    const isConnected = await checkDatabaseConnection();
+    if (isConnected) {
+      console.log('Database connection successful');
+      // Start the server only after successful DB connection
+      server.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+        console.log(`Socket.IO server running alongside HTTP server`);
+      });
+    } else {
+      throw new Error('Database connection check failed');
     }
-    
-    // Start the server regardless of DB status (it will retry connecting)
-    server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`REST API available at http://localhost:${PORT}`);
-      console.log(`Socket.IO server running alongside HTTP server`);
-    });
-  })
-  .catch(error => {
-    console.error("Failed to perform initial database connection check:", error);
-    // Start server anyway, the connection management will handle reconnection
-    server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`REST API available at http://localhost:${PORT}`);
-      console.log(`Socket.IO server running alongside HTTP server`);
-    });
-  });
+  } catch (error) {
+    console.error(`Database connection attempt ${retryCount + 1} failed:`, error);
+    if (retryCount < MAX_RETRIES) {
+      console.log(`Retrying in ${RETRY_INTERVAL/1000} seconds...`);
+      setTimeout(() => connectWithRetry(retryCount + 1), RETRY_INTERVAL);
+    } else {
+      console.error('Max connection attempts reached. Starting server in offline mode...');
+      server.listen(PORT, () => {
+        console.log(`Server running on port ${PORT} (Database unavailable)`);
+      });
+    }
+  }
+};
+
+// Start connection process
+connectWithRetry();
 
 // Handle graceful shutdown
 const gracefulShutdown = async () => {

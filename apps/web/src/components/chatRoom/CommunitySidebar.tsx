@@ -41,7 +41,16 @@ interface Community {
   chats: {
     id: string;
     createdAt: string;
-  }[]
+    messages: {
+      chatId: string;
+      content: string;
+      createdAt: string;
+      sender: {
+        id: string;
+        name: string;
+      };
+    }[];
+  }[];
   id: string;
   image: string | null;
   name: string;
@@ -57,6 +66,7 @@ type Communities = {
   role: string;
   community: Community;
 }[];
+
 const CommunitySidebar = () => {
   const router = useRouter();
   const {
@@ -68,6 +78,7 @@ const CommunitySidebar = () => {
     // enabled: !!,
     // dependencies: [],
     onSuccess: (data) => {
+      console.log(data);
       toast.success("Communities", {
         description: `Communities fetched successfully`,
       });
@@ -78,6 +89,20 @@ const CommunitySidebar = () => {
       });
     },
   });
+
+  const formatMessageDate = (isoDate: string) => {
+    if (isoDate === "") return "";
+    if (!isoDate) return "";
+    const messageDate = new Date(isoDate);
+    const today = new Date();
+
+    return messageDate.toLocaleDateString() === today.toLocaleDateString()
+      ? messageDate.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : messageDate.toLocaleDateString();
+  };
 
   if (getLoading) return <p>Loading...</p>;
   if (getError) return <p>Error: {getError.message}</p>;
@@ -116,12 +141,11 @@ const CommunitySidebar = () => {
                   key={index}
                   className="flex items-center justify-center hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 >
-
                   <Avatar className="h-14 w-14 rounded-full">
                     <AvatarImage
                       src="https://github.com/shadcn.png"
                       alt="user image"
-                      />
+                    />
                     <AvatarFallback className="rounded-lg">IA</AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col items-start gap-2 whitespace-nowrap p-4 pr-0 text-sm leading-tight">
@@ -129,12 +153,26 @@ const CommunitySidebar = () => {
                       <span className="text-foreground font-medium">
                         {group.community.name}
                       </span>{" "}
-                      <span className="ml-auto text-xs">time - last msg</span>
+                      <span className="ml-auto text-xs">
+                        {formatMessageDate(
+                          group.community.chats[0]?.messages[0]?.createdAt || ""
+                        )}
+                      </span>
                     </div>
                     {/* <span className="font-medium">{group.subject}</span> */}
                     <div className="flex w-full items-center justify-between">
                       <span className="line-clamp-2 w-[260px] whitespace-break-spaces text-xs">
-                        {`Display last msg, for now grp description ${group.community.description}`}
+                        {group.community.chats[0]?.messages[0]?.sender.name} -{" "}
+                        {(
+                          group.community.chats[0]?.messages[0]?.content ||
+                          "No messages yet"
+                        ).slice(0, 15) +
+                          ((
+                            group.community.chats[0]?.messages[0]?.content ||
+                            "No messages yet"
+                          ).length > 15
+                            ? "..."
+                            : "")}
                       </span>
                       <FaEllipsisVertical className="text-foreground/30" />
                     </div>
