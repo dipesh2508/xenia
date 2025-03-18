@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import CommunitySidebar from "@/components/chatRoom/CommunitySidebar";
-import { SidebarProvider, SidebarInset } from "@repo/ui/components/ui/sidebar";
 import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/ui/tabs";
 import {
   Avatar,

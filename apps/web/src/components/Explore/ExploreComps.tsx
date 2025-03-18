@@ -73,7 +73,7 @@ const ExploreComps = () => {
   return (
     <>
       <ExploreSearch query={query} setQuery={setQuery} />
-      <div className="mx-24 grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-6 h-full overflow-y-auto mb-8">
+      <div className="mx-24 grid lg:grid-cols-4 md:grid-cols-2 grid-cols-1 gap-6 h-full overflow-y-auto mb-8">
         {getData && getData.length > 0 ? (
           (() => {
             const filteredData = getData.filter((item) =>

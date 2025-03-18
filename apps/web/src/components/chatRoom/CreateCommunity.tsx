@@ -115,7 +115,7 @@ const CreateCommunity = () => {
         body: formData,
       });
 
-      router.push("/"); //change this after creating communitites page
+      router.push("/explore"); //change this after creating communitites page
     } catch (error) {
       console.error(error);
     }

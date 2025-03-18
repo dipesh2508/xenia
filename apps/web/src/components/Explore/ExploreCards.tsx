@@ -10,7 +10,6 @@ import {
 } from "@repo/ui/components/ui/card";
 import Image from "next/image";
 import { Button } from "@repo/ui/components/ui/button";
-import { join } from "path";
 
 interface Owner {
   id: string;
@@ -40,7 +39,7 @@ const ExploreCards = ({ data }: { data: Community }) => {
     //add joining logic here send data to community endpt will join as member
   };
   return (
-    <Card className="rounded-3xl relative bg-cover bg-center text-white overflow-hidden text-center pt-36 px-8 pb-2">
+    <Card className="rounded-rounded-3xl relative bg-cover bg-center text-white text-center pt-20 pb-10 flex justify-between flex-col">
       <div className="absolute inset-0 z-0 rounded-3xl">
         <Image
           src={data?.image || bgImg}
@@ -57,14 +56,15 @@ const ExploreCards = ({ data }: { data: Community }) => {
         >
           Join
         </Button>
+        <p className="my-2 text-sm">{`${data._count.members} member(s)`}</p>
       </CardHeader>
       <div className="relative z-20">
-        <CardFooter className="flex flex-col gap-2 text-white">
+        <CardFooter className="flex flex-col gap-2 text-white z-30">
           <CardDescription className="text-chatroom-secondary">
-            <p className="my-2 text-sm">{`${data._count.members} member(s)`}</p>
+            {/* <p className="my-2 text-sm">{`${data._count.members} member(s)`}</p> */}
             {data?.description}
           </CardDescription>
-          <CardTitle className="text-3xl">{data.name}</CardTitle>
+          <CardTitle className="text-2xl">{data.name}</CardTitle>
         </CardFooter>
       </div>
     </Card>
