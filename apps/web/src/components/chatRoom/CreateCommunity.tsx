@@ -18,7 +18,7 @@ import { Card, CardContent } from "@repo/ui/components/ui/card";
 import { FaSpinner } from "react-icons/fa6";
 import { useApi } from "@/hooks/useApi";
 import { useRouter } from "next/navigation";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const MIN_DIMENSIONS = { width: 200, height: 200 };
@@ -121,99 +121,96 @@ const CreateCommunity = () => {
     }
   }
   return (
-    <>
-      <Card className="p-1 lg:p-2 lg:mx-48 mx-2 lg:my-8 mt-6 mb-10 text-primary-9 shadow-md shadow-primary-1">
-        <CardContent>
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="space-y-6 flex flex-col pt-8 pb-1"
+    <Card className="p-1 lg:p-2 lg:mx-48 mx-2 lg:my-8 mt-6 mb-10 text-primary-9 shadow-md shadow-primary-1">
+      <CardContent>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-6 flex flex-col pt-8 pb-1"
+          >
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="XeniaOG"
+                      {...field}
+                      className="bg-primary-1/20 rounded-lg placeholder:opacity-50"
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    This is your public display name.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder=""
+                      {...field}
+                      className="bg-primary-1/20 rounded-lg placeholder:opacity-50"
+                      type="text"
+                      autoComplete="on"
+                    />
+                  </FormControl>
+                  <FormDescription>Let&apos;s add security.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="image"
+              render={({ field: { onChange, value, ...rest } }) => (
+                <FormItem>
+                  <FormLabel htmlFor="picture">Upload Image</FormLabel>
+                  <FormControl>
+                    <Input
+                      className="bg-primary-1/20 rounded-lg"
+                      type="file"
+                      id="picture"
+                      accept={ACCEPTED_IMAGE_TYPES.join(",")}
+                      onChange={(e) => {
+                        onChange(e.target.files?.item(0));
+                      }}
+                      {...rest}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Upload an image file (max 5MB). Supported formats: JPG, PNG,
+                    WebP.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button
+              type="submit"
+              variant={"gradient"}
+              className="self-center py-6 px-5 shadow-lg shadow-primary-1"
             >
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="XeniaOG"
-                        {...field}
-                        className="bg-primary-1/20 rounded-lg placeholder:opacity-50"
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      This is your public display name.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder=""
-                        {...field}
-                        className="bg-primary-1/20 rounded-lg placeholder:opacity-50"
-                        type="text"
-                        autoComplete="on"
-                      />
-                    </FormControl>
-                    <FormDescription>Let&apos;s add security.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="image"
-                render={({ field: { onChange, value, ...rest } }) => (
-                  <FormItem>
-                    <FormLabel htmlFor="picture">Upload Image</FormLabel>
-                    <FormControl>
-                      <Input
-                        className="bg-primary-1/20 rounded-lg"
-                        type="file"
-                        id="picture"
-                        accept={ACCEPTED_IMAGE_TYPES.join(",")}
-                        onChange={(e) => {
-                          onChange(e.target.files?.item(0));
-                        }}
-                        {...rest}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Upload an image file (max 5MB). Supported formats: JPG,
-                      PNG, WebP.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <Button
-                type="submit"
-                variant={"gradient"}
-                className="self-center py-6 px-5 shadow-lg shadow-primary-1"
-              >
-                {/* {isLoading ? ( */}
-                {/* <FaSpinner className="animate-spin text-xl" />
+              {/* {isLoading ? ( */}
+              {/* <FaSpinner className="animate-spin text-xl" />
               ) : ( */}
-                Create
-                {/* )} */}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-      <Toaster richColors />
-    </>
+              Create
+              {/* )} */}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 };
 
