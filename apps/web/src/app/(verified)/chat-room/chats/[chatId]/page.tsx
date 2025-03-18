@@ -85,8 +85,11 @@ const Page = ({ params }: { params: { chatId: string } }) => {
       
       // Use the messages already included in the community response
       if (data.chats && data.chats.length > 0 && data.chats[0]?.messages) {
-        // Set the messages from the community response
-        setMessages(data.chats[0].messages || []);
+        // Set the messages from the community response - sort to show oldest first
+        const sortedMessages = [...(data.chats[0].messages || [])].sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+        setMessages(sortedMessages);
       }
     },
     onError: (error) => {
@@ -98,10 +101,6 @@ const Page = ({ params }: { params: { chatId: string } }) => {
 
   const { mutate: sendMessageMutation, isLoading: isSendingMessage } = useApi("/chats/messages", {
     method: "POST",
-    onSuccess: (data) => {
-      // The socket will handle adding the new message to the UI
-      toast.success("Message sent");
-    },
     onError: (error) => {
       toast.error("Failed to send message", {
         description: error.message
@@ -145,7 +144,8 @@ const Page = ({ params }: { params: { chatId: string } }) => {
       });
 
       socketInstance.on('newMessage', (message: Message) => {
-        setMessages(prev => [message, ...prev]);
+        // Add new messages to the end of the array
+        setMessages(prev => [...prev, message]);
       });
 
       socketInstance.on('messageUpdated', (updatedMessage: Message) => {
@@ -231,11 +231,16 @@ const Page = ({ params }: { params: { chatId: string } }) => {
         {/* Chat area with flex-grow to take available space */}
         <div className="flex-grow overflow-hidden flex flex-col">
           {/* This div handles scrolling */}
-          <div className="h-full w-full overflow-y-auto">
-            {/* Reversed column layout to start from bottom */}
-            <div className="min-h-full flex flex-col-reverse px-4">
-              <div ref={messagesEndRef} />
+          <div className="h-full w-full overflow-y-auto flex flex-col">
+            {/* Make messages stick to the bottom with justify-end */}
+            <div className="min-h-full flex flex-col justify-end px-4">
               <div className="flex flex-col gap-2 pb-2 mb-1">
+                {getLoading && <div className="text-center py-2">Loading messages...</div>}
+                {!getLoading && messages.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No messages yet. Start the conversation!
+                  </div>
+                )}
                 {messages.map((message) => (
                   message.senderId === user?.id ? (
                     <MeChatBubble
@@ -251,13 +256,8 @@ const Page = ({ params }: { params: { chatId: string } }) => {
                     />
                   )
                 ))}
-                {getLoading && <div className="text-center py-2">Loading messages...</div>}
-                {!getLoading && messages.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No messages yet. Start the conversation!
-                  </div>
-                )}
               </div>
+              <div ref={messagesEndRef} />
             </div>
           </div>
         </div>

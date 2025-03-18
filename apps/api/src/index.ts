@@ -18,12 +18,14 @@ const PORT = parseInt(process.env.PORT || "8000", 10);
 // Create HTTP server
 const server = http.createServer(app);
 
-// Initialize Socket.IO
+// Initialize Socket.IO with the server
 initSocketServer(server);
 
 // Start the server
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`REST API available at http://localhost:${PORT}`);
+  console.log(`Socket.IO server running alongside HTTP server`);
 });
 
 // Handle unhandled promise rejections

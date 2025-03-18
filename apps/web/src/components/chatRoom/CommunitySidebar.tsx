@@ -86,7 +86,7 @@ const CommunitySidebar = () => {
       collapsible="none"
       className=" border-l rounded-tl-2xl rounded-bl-2xl overflow-y-auto flex-shrink-0 h-full max-h-[calc(100vh-32px)] bg-white"
     >
-      <SidebarHeader className="gap-3.5 border-b p-4 ">
+      <SidebarHeader className="gap-3.5 border-b p-4 pt-12">
         <div className="flex w-full items-center justify-between">
           <div className="text-2xl font-semibold text-foreground">
             Communities

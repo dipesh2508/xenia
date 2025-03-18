@@ -1,8 +1,7 @@
 import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
-import { Request } from 'express';
 import { verify } from 'jsonwebtoken';
-import { prisma } from '@repo/database';
+import { prisma } from '@/utils/prisma';
 
 let io: Server;
 
@@ -28,6 +27,10 @@ const authenticateSocket = async (socket: Socket, next: (err?: Error) => void) =
     // Check if JWT_SECRET exists
     if (!process.env.JWT_SECRET) {
       return next(new Error('JWT_SECRET is not configured'));
+    }
+
+    if(!token) {
+      return next(new Error('Authentication failed: No token provided'));
     }
     
     // Verify the token
@@ -56,9 +59,15 @@ const authenticateSocket = async (socket: Socket, next: (err?: Error) => void) =
 };
 
 export const initSocketServer = (server: HttpServer): void => {
+  // Ensure io isn't already initialized
+  if (io) {
+    console.warn('Socket.IO server already initialized');
+    return;
+  }
+
   io = new Server(server, {
     cors: {
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
       methods: ['GET', 'POST'],
       credentials: true
     },
@@ -91,6 +100,16 @@ export const initSocketServer = (server: HttpServer): void => {
       console.log(`User disconnected: ${(socket as any).user?.id}`);
     });
   });
+
+  console.log('Socket.IO server initialized successfully');
+};
+
+// Function to get the io instance
+export const getIO = (): Server => {
+  if (!io) {
+    throw new Error('Socket.IO has not been initialized. Please call initSocketServer first.');
+  }
+  return io;
 };
 
 // Export the socket server

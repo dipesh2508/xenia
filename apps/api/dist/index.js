@@ -882,11 +882,14 @@ var authenticateSocket = async (socket, next) => {
     if (!process.env.JWT_SECRET) {
       return next(new Error("JWT_SECRET is not configured"));
     }
+    if (!token) {
+      return next(new Error("Authentication failed: No token provided"));
+    }
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     if (!decoded || !decoded.id) {
       return next(new Error("Authentication failed: Invalid token"));
     }
-    const user = await prisma2.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: decoded.id }
     });
     if (!user) {
@@ -900,6 +903,10 @@ var authenticateSocket = async (socket, next) => {
   }
 };
 var initSocketServer = (server2) => {
+  if (io) {
+    console.warn("Socket.IO server already initialized");
+    return;
+  }
   io = new socket_io.Server(server2, {
     cors: {
       origin: process.env.CORS_ORIGIN || "http://localhost:3000",
@@ -926,6 +933,7 @@ var initSocketServer = (server2) => {
       console.log(`User disconnected: ${socket.user?.id}`);
     });
   });
+  console.log("Socket.IO server initialized successfully");
 };
 
 // src/controllers/message.controller.ts
@@ -1146,6 +1154,8 @@ var server = http__default.default.createServer(app_default);
 initSocketServer(server);
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+  console.log(`REST API available at http://localhost:${PORT}`);
+  console.log(`Socket.IO server running alongside HTTP server`);
 });
 process.on("unhandledRejection", (reason) => {
   console.error("Unhandled Rejection:", reason.message);

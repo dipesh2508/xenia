@@ -22,7 +22,7 @@ const RecieverChatBubble = ({
       </Avatar>
       <div className="flex flex-col gap-1">
         <span className="text-xs text-muted-foreground">{sender}</span>
-        <div className="bg-chatroom-input rounded-bl-lg rounded-r-lg p-3 text-sm">
+        <div className="bg-white shadow-sm rounded-bl-lg rounded-r-lg p-3 text-sm">
           {content}
         </div>
       </div>
