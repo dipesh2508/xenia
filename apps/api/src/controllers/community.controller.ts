@@ -87,8 +87,13 @@ export const getCommunity = async (
         },
         chats: {
           include: {
+            _count: {
+              select: {
+                messages: true
+              }
+            },
             messages: {
-              take: 10,
+              take: 20,
               orderBy: {
                 createdAt: "desc",
               },
@@ -102,9 +107,9 @@ export const getCommunity = async (
               },
             },
           },
-      },
-    }
-  });
+        },
+      }
+    });
 
     if (!community) {
       res.status(404).json({ message: "Community not found" });

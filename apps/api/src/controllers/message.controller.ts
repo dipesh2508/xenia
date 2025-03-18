@@ -64,7 +64,7 @@ export const getMessagesByChat = async (req: any, res: Response): Promise<void> 
     const { chatId } = req.params;
     const userId = req.user.id;
     const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 50;
+    const limit = parseInt(req.query.limit as string) || 20;
     const skip = (page - 1) * limit;
 
     // Verify the chat exists and user has access

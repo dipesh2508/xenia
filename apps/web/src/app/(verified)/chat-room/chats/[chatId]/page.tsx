@@ -14,6 +14,7 @@ import { useApi } from "@/hooks/useApi";
 import { toast } from "sonner";
 import { io, Socket } from "socket.io-client";
 import { useUserDetails } from "@/hooks/useUserDetails";
+import { Button } from "@repo/ui/components/ui/button";
 
 interface Message {
   id: string;
@@ -50,6 +51,9 @@ interface Chat {
   messages: Message[];
   createdAt: string;
   updatedAt: string;
+  _count: {
+    messages: number;
+  };
 }
 
 interface Community {
@@ -68,9 +72,43 @@ const Page = ({ params }: { params: { chatId: string } }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useUserDetails();
   const { chatId } = params;
+  const [isNewMessage, setIsNewMessage] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Add a separate useApi hook for fetching older messages
+  const { mutate: fetchOlderMessagesApi } = useApi(`/chats/${chatId}/messages`, {
+    method: 'GET',
+    enabled: false,
+  });
+
+  const loadOlderMessages = async () => {
+    if (isLoadingMore || !community?.chats?.[0]?.id) return;
+    
+    setIsLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      const response = await fetchOlderMessagesApi({
+        url: `/chats/${community.chats[0].id}/messages?page=${nextPage}&limit=20`
+      }) as MessageResponse;
+
+      setIsNewMessage(false); // Indicate these are old messages
+      setMessages(prev => [...response.messages.reverse(), ...prev]);
+      setHasMore(response.hasMore);
+      setCurrentPage(response.page);
+    } catch (error: any) {
+      toast.error("Failed to load older messages", {
+        description: error.message
+      });
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   const {
     data: community,
@@ -90,6 +128,10 @@ const Page = ({ params }: { params: { chatId: string } }) => {
           (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
         );
         setMessages(sortedMessages);
+        // Set hasMore if there are more than 20 initial messages
+        setHasMore(data.chats[0]._count.messages > 20);
+        // Set initial load to true when first messages are set
+        setIsInitialLoad(true);
       }
     },
     onError: (error) => {
@@ -144,7 +186,7 @@ const Page = ({ params }: { params: { chatId: string } }) => {
       });
 
       socketInstance.on('newMessage', (message: Message) => {
-        // Add new messages to the end of the array
+        setIsNewMessage(true); // Indicate this is a new message
         setMessages(prev => [...prev, message]);
       });
 
@@ -171,10 +213,13 @@ const Page = ({ params }: { params: { chatId: string } }) => {
     }
   }, [community]);
 
-  // Scroll to bottom when messages change
+  // Update scroll behavior to handle both initial load and new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (isNewMessage || isInitialLoad) {
+      messagesEndRef.current?.scrollIntoView({ behavior: isInitialLoad ? 'auto' : 'smooth' });
+      setIsInitialLoad(false);
+    }
+  }, [messages, isNewMessage, isInitialLoad]);
 
   // Send message function
   const sendMessage = async (content: string) => {
@@ -229,12 +274,21 @@ const Page = ({ params }: { params: { chatId: string } }) => {
         </header>
 
         {/* Chat area with flex-grow to take available space */}
-        <div className="flex-grow overflow-hidden flex flex-col">
-          {/* This div handles scrolling */}
-          <div className="h-full w-full overflow-y-auto flex flex-col">
-            {/* Make messages stick to the bottom with justify-end */}
-            <div className="min-h-full flex flex-col justify-end px-4">
-              <div className="flex flex-col gap-2 pb-2 mb-1">
+        <div className="flex-1 overflow-hidden pt-8">
+          {/* Scrollable container */}
+          <div className="h-full overflow-y-auto">
+            {/* Message container */}
+            <div className="flex flex-col justify-end min-h-full px-4">
+              {hasMore && (
+                <Button
+                  onClick={loadOlderMessages}
+                  className="self-center mb-4 px-4 py-2 text-sm transition-colors"
+                  disabled={isLoadingMore}
+                >
+                  {isLoadingMore ? "Loading..." : "Load older messages"}
+                </Button>
+              )}
+              <div className="flex flex-col gap-2 py-4">
                 {getLoading && <div className="text-center py-2">Loading messages...</div>}
                 {!getLoading && messages.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">

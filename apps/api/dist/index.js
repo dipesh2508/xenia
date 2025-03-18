@@ -27,7 +27,86 @@ var jwt__default = /*#__PURE__*/_interopDefault(jwt);
 var multer__default = /*#__PURE__*/_interopDefault(multer);
 
 // src/index.ts
-var prisma = new client.PrismaClient();
+var PrismaManager = class _PrismaManager {
+  static instance;
+  static isConnecting = false;
+  static reconnectAttempts = 0;
+  static MAX_RECONNECT_ATTEMPTS = 5;
+  static RECONNECT_INTERVAL = 5e3;
+  // 5 seconds
+  static getInstance() {
+    if (!_PrismaManager.instance) {
+      console.log("Initializing PrismaClient...");
+      _PrismaManager.instance = new client.PrismaClient({
+        log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+        errorFormat: "pretty"
+      });
+      _PrismaManager.instance.$use(async (params, next) => {
+        try {
+          return await next(params);
+        } catch (error) {
+          if (error.message.includes("Can't reach database server") || error.message.includes("Connection refused") || error.message.includes("Connection lost") || error.message.includes("ECONNREFUSED")) {
+            console.error(`Database connection error: ${error.message}`);
+            if (!_PrismaManager.isConnecting) {
+              _PrismaManager.attemptReconnection();
+            }
+          }
+          throw error;
+        }
+      });
+      _PrismaManager.connect();
+    }
+    return _PrismaManager.instance;
+  }
+  static async connect() {
+    try {
+      await _PrismaManager.instance.$connect();
+      console.log("Database connection established successfully");
+      _PrismaManager.reconnectAttempts = 0;
+    } catch (error) {
+      console.error("Failed to connect to the database:", error);
+      _PrismaManager.attemptReconnection();
+    }
+  }
+  static attemptReconnection() {
+    if (_PrismaManager.reconnectAttempts >= _PrismaManager.MAX_RECONNECT_ATTEMPTS) {
+      console.error(`Maximum reconnection attempts (${_PrismaManager.MAX_RECONNECT_ATTEMPTS}) reached. Giving up.`);
+      return;
+    }
+    _PrismaManager.isConnecting = true;
+    _PrismaManager.reconnectAttempts++;
+    console.log(`Attempting to reconnect to database (attempt ${_PrismaManager.reconnectAttempts} of ${_PrismaManager.MAX_RECONNECT_ATTEMPTS})...`);
+    setTimeout(async () => {
+      try {
+        await _PrismaManager.instance.$disconnect();
+        await _PrismaManager.instance.$connect();
+        console.log("Successfully reconnected to the database");
+        _PrismaManager.isConnecting = false;
+        _PrismaManager.reconnectAttempts = 0;
+      } catch (error) {
+        console.error("Failed to reconnect:", error);
+        _PrismaManager.isConnecting = false;
+        _PrismaManager.attemptReconnection();
+      }
+    }, _PrismaManager.RECONNECT_INTERVAL);
+  }
+  static async disconnect() {
+    if (_PrismaManager.instance) {
+      await _PrismaManager.instance.$disconnect();
+      console.log("Database connection closed");
+    }
+  }
+};
+var prisma = PrismaManager.getInstance();
+var checkDatabaseConnection = async () => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return true;
+  } catch (error) {
+    console.error("Database health check failed:", error);
+    return false;
+  }
+};
 var generateJwtToken = (userId, res) => {
   const token = jwt__default.default.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: "30d"
@@ -200,24 +279,31 @@ var isLoggedIn = async (req, res, next) => {
         message: "Unauthorized"
       });
     }
-    const user = await prisma.user.findUnique({
-      where: {
-        id: decoded.id
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true
+    try {
+      const user = await prisma.user.findUnique({
+        where: {
+          id: decoded.id
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true
+        }
+      });
+      if (!user) {
+        return res.status(401).json({
+          message: "User not found."
+        });
       }
-    });
-    if (!user) {
-      return res.status(401).json({
-        message: "User not found."
+      req.user = user;
+      next();
+    } catch (dbError) {
+      console.error("Database error during authentication:", dbError);
+      return res.status(503).json({
+        message: "Service temporarily unavailable. Please try again later."
       });
     }
-    req.user = user;
-    next();
   } catch (error) {
     console.error("Authentication Error:", error);
     return res.status(401).json({
@@ -343,8 +429,13 @@ var getCommunity = async (req, res) => {
         },
         chats: {
           include: {
+            _count: {
+              select: {
+                messages: true
+              }
+            },
             messages: {
-              take: 10,
+              take: 20,
               orderBy: {
                 createdAt: "desc"
               },
@@ -909,7 +1000,7 @@ var initSocketServer = (server2) => {
   }
   io = new socket_io.Server(server2, {
     cors: {
-      origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+      origin: process.env.FRONTEND_URL || "http://localhost:3000",
       methods: ["GET", "POST"],
       credentials: true
     },
@@ -987,7 +1078,7 @@ var getMessagesByChat = async (req, res) => {
     const { chatId } = req.params;
     const userId = req.user.id;
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
+    const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
     const chat = await prisma2.chat.findUnique({
       where: { id: chatId },
@@ -1152,13 +1243,44 @@ if (!process.env.JWT_SECRET) {
 var PORT = parseInt(process.env.PORT || "8000", 10);
 var server = http__default.default.createServer(app_default);
 initSocketServer(server);
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`REST API available at http://localhost:${PORT}`);
-  console.log(`Socket.IO server running alongside HTTP server`);
+checkDatabaseConnection().then((isConnected) => {
+  if (!isConnected) {
+    console.warn("Warning: Initial database connection check failed. Will retry automatically.");
+  }
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`REST API available at http://localhost:${PORT}`);
+    console.log(`Socket.IO server running alongside HTTP server`);
+  });
+}).catch((error) => {
+  console.error("Failed to perform initial database connection check:", error);
+  server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`REST API available at http://localhost:${PORT}`);
+    console.log(`Socket.IO server running alongside HTTP server`);
+  });
 });
+var gracefulShutdown = async () => {
+  console.log("Shutting down gracefully...");
+  server.close(() => {
+    console.log("HTTP server closed.");
+    prisma.$disconnect().then(() => {
+      console.log("Database connection closed.");
+      process.exit(0);
+    }).catch((error) => {
+      console.error("Error during database disconnection:", error);
+      process.exit(1);
+    });
+  });
+  setTimeout(() => {
+    console.error("Could not close connections in time, forcefully shutting down");
+    process.exit(1);
+  }, 1e4);
+};
 process.on("unhandledRejection", (reason) => {
   console.error("Unhandled Rejection:", reason.message);
 });
+process.on("SIGTERM", gracefulShutdown);
+process.on("SIGINT", gracefulShutdown);
 //# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map
