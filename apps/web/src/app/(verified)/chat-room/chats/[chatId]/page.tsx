@@ -1,8 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
-import CommunitySidebar from "@/components/chatRoom/CommunitySidebar";
-import { SidebarProvider, SidebarInset } from "@repo/ui/components/ui/sidebar";
+import React, { useState, useEffect, useRef } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/ui/tabs";
 import {
   Avatar,
@@ -14,20 +12,28 @@ import RecieverChatBubble from "@/components/chatRoom/RecieverChatBubble";
 import SendMessage from "@/components/chatRoom/SendMessage";
 import { useApi } from "@/hooks/useApi";
 import { toast } from "sonner";
+import { io, Socket } from "socket.io-client";
+import { useUserDetails } from "@/hooks/useUserDetails";
 
-interface msg {
-  sender: string;
+interface Message {
+  id: string;
   content: string;
-}
-
-interface chat {
-  chats: msg[];
-}
-
-interface PageParams {
-  params: {
-    chatId: string;
+  senderId: string;
+  chatId: string;
+  createdAt: string;
+  sender: {
+    id: string;
+    name: string;
+    image: string | null;
   };
+}
+
+interface MessageResponse {
+  messages: Message[];
+  total: number;
+  hasMore: boolean;
+  page: number;
+  limit: number;
 }
 
 interface User {
@@ -35,6 +41,15 @@ interface User {
   name: string;
   email: string;
   image: string | null;
+}
+
+interface Chat {
+  id: string;
+  name: string;
+  communityId: string;
+  messages: Message[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface Community {
@@ -46,25 +61,33 @@ interface Community {
   owner: User;
   createdAt: string;
   updatedAt: string;
+  chats: Chat[];
 }
 
-const Page = ({ params }: PageParams) => {
-  const [msgs, setMsgs] = useState<chat>({ chats: [] });
+const Page = ({ params }: { params: { chatId: string } }) => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { user } = useUserDetails();
   const { chatId } = params;
 
   const {
     data: community,
-    error: getError,
     isLoading: getLoading,
   } = useApi<Community>(`/communities/${chatId}`, {
     method: "GET",
-    // enabled: !!,
-    // dependencies: [],
     onSuccess: (data) => {
       console.log(data);
-      toast.success("Your Communities", {
-        description: `Let's chat`,
+      toast.success("Community loaded", {
+        description: `Let's chat in ${data.name}`,
       });
+      
+      // Use the messages already included in the community response
+      if (data.chats && data.chats.length > 0 && data.chats[0]?.messages) {
+        // Set the messages from the community response
+        setMessages(data.chats[0].messages || []);
+      }
     },
     onError: (error) => {
       toast.error("Community not fetched successfully", {
@@ -72,6 +95,105 @@ const Page = ({ params }: PageParams) => {
       });
     },
   });
+
+  const { mutate: sendMessageMutation, isLoading: isSendingMessage } = useApi("/chats/messages", {
+    method: "POST",
+    onSuccess: (data) => {
+      // The socket will handle adding the new message to the UI
+      toast.success("Message sent");
+    },
+    onError: (error) => {
+      toast.error("Failed to send message", {
+        description: error.message
+      });
+    },
+  });
+
+  // Connect to socket when component mounts and community data is available
+  useEffect(() => {
+    if (community?.chats && community.chats.length > 0) {
+      const chatId = community.chats[0]?.id;
+      
+      // Initialize socket connection with proper configuration
+      const socketInstance = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000', {
+        withCredentials: true,
+        transports: ['websocket', 'polling'],  // Try WebSocket first, fallback to polling
+        reconnectionAttempts: 5,               // Try to reconnect 5 times
+        reconnectionDelay: 1000,               // Start with 1 second delay
+        reconnectionDelayMax: 5000,            // Maximum 5 seconds delay
+        timeout: 20000                         // Connection timeout
+      });
+
+      socketInstance.on('connect', () => {
+        console.log('Socket connected with ID:', socketInstance.id);
+        setIsConnected(true);
+        
+        // Join the chat room once connected
+        socketInstance.emit('joinRoom', chatId);
+      });
+
+      socketInstance.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+        toast.error("Socket connection error", {
+          description: "Trying to reconnect..."
+        });
+      });
+
+      socketInstance.on('disconnect', () => {
+        console.log('Socket disconnected');
+        setIsConnected(false);
+      });
+
+      socketInstance.on('newMessage', (message: Message) => {
+        setMessages(prev => [message, ...prev]);
+      });
+
+      socketInstance.on('messageUpdated', (updatedMessage: Message) => {
+        setMessages(prev => 
+          prev.map(msg => msg.id === updatedMessage.id ? updatedMessage : msg)
+        );
+      });
+
+      socketInstance.on('messageDeleted', ({ id }: { id: string }) => {
+        setMessages(prev => prev.filter(msg => msg.id !== id));
+      });
+
+      setSocket(socketInstance);
+
+      // Cleanup function
+      return () => {
+        if (socketInstance.connected) {
+          socketInstance.emit('leaveRoom', chatId);
+          socketInstance.disconnect();
+        }
+        socketInstance.off();
+      };
+    }
+  }, [community]);
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Send message function
+  const sendMessage = async (content: string) => {
+    if (!content.trim() || !community?.chats?.[0]?.id) return;
+    
+    const chatId = community.chats[0].id;
+
+    try {
+      await sendMessageMutation({
+        body: {
+          content,
+          chatId,
+        }
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Error is already handled by the useApi hook
+    }
+  };
 
   return (
     <div>
@@ -112,26 +234,39 @@ const Page = ({ params }: PageParams) => {
           <div className="h-full w-full overflow-y-auto">
             {/* Reversed column layout to start from bottom */}
             <div className="min-h-full flex flex-col-reverse px-4">
+              <div ref={messagesEndRef} />
               <div className="flex flex-col gap-2 pb-2 mb-1">
-                {msgs.chats.map((item, index) =>
-                  item.sender == "Ana" ? (
+                {messages.map((message) => (
+                  message.senderId === user?.id ? (
                     <MeChatBubble
-                      key={`${item.content}-${index}`}
-                      content={item.content}
+                      key={message.id}
+                      content={message.content}
                     />
                   ) : (
                     <RecieverChatBubble
-                      key={`${item.content}-${index}`}
-                      content={item.content}
+                      key={message.id}
+                      content={message.content}
+                      sender={message.sender.name}
+                      avatar={message.sender.image}
                     />
                   )
+                ))}
+                {getLoading && <div className="text-center py-2">Loading messages...</div>}
+                {!getLoading && messages.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No messages yet. Start the conversation!
+                  </div>
                 )}
               </div>
             </div>
           </div>
         </div>
 
-        <SendMessage msgs={msgs} setMsgs={setMsgs} />
+        <SendMessage 
+          onSendMessage={sendMessage} 
+          isConnected={isConnected} 
+          disabled={!community?.chats?.[0]?.id || isSendingMessage} 
+        />
       </div>
     </div>
   );

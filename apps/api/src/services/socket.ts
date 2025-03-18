@@ -1,91 +1,97 @@
-import { Server } from "socket.io";
-import http from "http";
-import { verifyJWT } from "@/utils/jwt";
-import { prisma } from "@repo/database";
-import { User } from "@prisma/client";
+import { Server as HttpServer } from 'http';
+import { Server, Socket } from 'socket.io';
+import { Request } from 'express';
+import { verify } from 'jsonwebtoken';
+import { prisma } from '@repo/database';
 
-// Export socket.io server instance
-export let io: Server;
+let io: Server;
 
-export const initSocketServer = (server: http.Server) => {
+// Socket middleware to authenticate connections
+const authenticateSocket = async (socket: Socket, next: (err?: Error) => void) => {
+  try {
+    // Get cookies from handshake
+    const cookies = socket.handshake.headers.cookie;
+    if (!cookies) {
+      return next(new Error('Authentication failed: No cookies provided'));
+    }
+    
+    // Parse cookies to get the JWT token
+    const cookieArray = cookies.split(';').map(cookie => cookie.trim());
+    const tokenCookie = cookieArray.find(cookie => cookie.startsWith('token='));
+    
+    if (!tokenCookie) {
+      return next(new Error('Authentication failed: No token cookie'));
+    }
+    
+    const token = tokenCookie.split('=')[1];
+    
+    // Check if JWT_SECRET exists
+    if (!process.env.JWT_SECRET) {
+      return next(new Error('JWT_SECRET is not configured'));
+    }
+    
+    // Verify the token
+    const decoded = verify(token, process.env.JWT_SECRET) as unknown as { id: string };
+    
+    if (!decoded || !decoded.id) {
+      return next(new Error('Authentication failed: Invalid token'));
+    }
+    
+    // Find the user
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id }
+    });
+    
+    if (!user) {
+      return next(new Error('Authentication failed: User not found'));
+    }
+    
+    // Attach user to socket for later use
+    (socket as any).user = user;
+    next();
+  } catch (error) {
+    console.error('Socket authentication error:', error);
+    next(new Error('Authentication failed'));
+  }
+};
+
+export const initSocketServer = (server: HttpServer): void => {
   io = new Server(server, {
     cors: {
-      origin: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : process.env.FRONTEND_URL,
-      methods: ["GET", "POST"],
+      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+      methods: ['GET', 'POST'],
       credentials: true
-    }
+    },
+    path: '/socket.io/',
+    transports: ['websocket', 'polling'],
+    // Increase ping timeout to prevent premature disconnections
+    pingTimeout: 60000
   });
 
-  // Socket middleware to authenticate users
-  io.use(async (socket, next) => {
-    try {
-      const token = socket.handshake.auth.token;
-      
-      if (!token) {
-        return next(new Error("Authentication error: Token not provided"));
-      }
+  // Apply authentication middleware
+  io.use(authenticateSocket);
 
-      const decoded = verifyJWT(token);
-      
-      if (!decoded || !decoded.id) {
-        return next(new Error("Authentication error: Invalid token"));
-      }
-      
-      // Fetch user from database
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.id }
-      });
-      
-      if (!user) {
-        return next(new Error("Authentication error: User not found"));
-      }
-      
-      // Attach user to socket
-      socket.data.user = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        image: user.image
-      };
-      
-      next();
-    } catch (error) {
-      console.error("Socket authentication error:", error);
-      next(new Error("Authentication error"));
-    }
-  });
-
-  // Handle socket connections
-  io.on("connection", (socket) => {
-    const user = socket.data.user as Partial<User>;
-    console.log(`User connected: ${user.name} (${user.id})`);
+  io.on('connection', (socket: Socket) => {
+    console.log(`User connected: ${(socket as any).user?.id}`);
     
-    // Join a chat room
-    socket.on("joinChat", (chatId: string) => {
-      socket.join(chatId);
-      console.log(`User ${user.id} joined chat: ${chatId}`);
+    // Join a specific chat room
+    socket.on('joinRoom', (roomId: string) => {
+      socket.join(roomId);
+      console.log(`User ${(socket as any).user?.id} joined room ${roomId}`);
     });
     
-    // Leave a chat room
-    socket.on("leaveChat", (chatId: string) => {
-      socket.leave(chatId);
-      console.log(`User ${user.id} left chat: ${chatId}`);
-    });
-    
-    // Handle message typing status
-    socket.on("typing", ({ chatId, isTyping }: { chatId: string, isTyping: boolean }) => {
-      socket.to(chatId).emit("userTyping", {
-        userId: user.id,
-        userName: user.name,
-        isTyping
-      });
+    // Leave a specific chat room
+    socket.on('leaveRoom', (roomId: string) => {
+      socket.leave(roomId);
+      console.log(`User ${(socket as any).user?.id} left room ${roomId}`);
     });
     
     // Handle disconnection
-    socket.on("disconnect", () => {
-      console.log(`User disconnected: ${user.name} (${user.id})`);
+    socket.on('disconnect', () => {
+      console.log(`User disconnected: ${(socket as any).user?.id}`);
     });
   });
-
-  return io;
 };
+
+// Export the socket server
+export { io };

@@ -1,88 +1,65 @@
 "use client";
-import React from "react";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import React, { useState } from "react";
 import { Button } from "@repo/ui/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-} from "@repo/ui/components/ui/form";
-import { Input } from "@repo/ui/components/ui/input";
-import { RiSendPlaneFill } from "react-icons/ri";
-import { Smile } from "lucide-react";
+import { Textarea } from "@repo/ui/components/ui/textarea";
+import { SendHorizontal } from "lucide-react";
 
-interface msg {
-  sender: string;
-  content: string;
+interface SendMessageProps {
+  onSendMessage: (message: string) => void;
+  isConnected?: boolean;
+  disabled?: boolean;
 }
 
-interface chat {
-  chats: msg[];
-}
+const SendMessage = ({ 
+  onSendMessage, 
+  isConnected = true, 
+  disabled = false 
+}: SendMessageProps) => {
+  const [message, setMessage] = useState("");
 
-const formSchema = z.object({
-  chatmsg: z.string(),
-});
-
-const SendMessage = ({
-  msgs,
-  setMsgs,
-}: {
-  msgs: chat;
-  setMsgs: React.Dispatch<React.SetStateAction<chat>>;
-}) => {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      chatmsg: "",
-    },
-  });
-
-  const addMessage = (sender: string, content: string) => {
-    setMsgs((prev) => ({
-      ...prev,
-      chats: [...prev.chats, { sender, content }],
-    }));
+  const handleSend = () => {
+    if (message.trim() && !disabled) {
+      onSendMessage(message);
+      setMessage("");
+    }
   };
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    addMessage("Elsa", values.chatmsg);
-    form.reset();
-  }
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
   return (
-    <div className="flex w-full px-6 py-4 bg-white gap-2 items-center flex-shrink-0">
-      <Smile className="text-indigo-950" />
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex w-full items-center gap-2"
-        >
-          <FormField
-            control={form.control}
-            name="chatmsg"
-            render={({ field }) => (
-              <FormItem className="w-full">
-                <FormControl>
-                  <Input
-                    placeholder="Type your message"
-                    className="bg-chatroom-accent/10 rounded-xl flex-1"
-                    {...field}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
+    <div className="sticky bottom-0 bg-chatroom-background p-4 pt-2">
+      <div className="relative">
+        {!isConnected && (
+          <div className="absolute -top-6 left-0 right-0 text-center">
+            <span className="text-xs bg-red-500 text-white px-2 py-1 rounded-md">
+              Disconnected - Reconnecting...
+            </span>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <Textarea
+            placeholder="Write a message..."
+            className="min-h-12 max-h-32 resize-none bg-chatroom-input"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={disabled}
           />
           <Button
-            className="bg-violet-500/80 px-2.5 rounded-xl text-white"
-            type="submit"
+            size="icon"
+            className="rounded-full h-12 w-12 bg-chatroom-accent"
+            onClick={handleSend}
+            disabled={!message.trim() || disabled}
           >
-            <RiSendPlaneFill className="text-xl" />
+            <SendHorizontal className="h-5 w-5" />
           </Button>
-        </form>
-      </Form>
+        </div>
+      </div>
     </div>
   );
 };

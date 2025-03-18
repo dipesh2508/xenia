@@ -2,7 +2,8 @@
 
 var dotenv = require('dotenv');
 var path = require('path');
-var express3 = require('express');
+var http = require('http');
+var express4 = require('express');
 var cookieParser = require('cookie-parser');
 var cors = require('cors');
 var client = require('@prisma/client');
@@ -11,12 +12,14 @@ var jwt = require('jsonwebtoken');
 var cloudinary = require('cloudinary');
 var multerStorageCloudinary = require('multer-storage-cloudinary');
 var multer = require('multer');
+var socket_io = require('socket.io');
 
 function _interopDefault (e) { return e && e.__esModule ? e : { default: e }; }
 
 var dotenv__default = /*#__PURE__*/_interopDefault(dotenv);
 var path__default = /*#__PURE__*/_interopDefault(path);
-var express3__default = /*#__PURE__*/_interopDefault(express3);
+var http__default = /*#__PURE__*/_interopDefault(http);
+var express4__default = /*#__PURE__*/_interopDefault(express4);
 var cookieParser__default = /*#__PURE__*/_interopDefault(cookieParser);
 var cors__default = /*#__PURE__*/_interopDefault(cors);
 var bcrypt__default = /*#__PURE__*/_interopDefault(bcrypt);
@@ -224,7 +227,7 @@ var isLoggedIn = async (req, res, next) => {
 };
 
 // src/routes/user.route.ts
-var router = express3__default.default.Router();
+var router = express4__default.default.Router();
 router.route("/signup").post(userSignup);
 router.route("/login").post(userLogin);
 router.route("/logout").post(logout);
@@ -296,19 +299,27 @@ var createCommunity = async (req, res) => {
       res.status(400).json({ message: "Community name already exists" });
       return;
     }
-    const community = await prisma.community.create({
-      data: {
-        name,
-        description,
-        ...req.file?.path && { image: req.file.path },
-        ownerId: userId,
-        members: {
-          create: {
-            userId,
-            role: "OWNER"
+    const community = await prisma.$transaction(async (tx) => {
+      const newCommunity = await tx.community.create({
+        data: {
+          name,
+          description,
+          ...req.file?.path && { image: req.file.path },
+          ownerId: userId,
+          members: {
+            create: {
+              userId,
+              role: "OWNER"
+            }
           }
         }
-      }
+      });
+      await tx.chat.create({
+        data: {
+          communityId: newCommunity.id
+        }
+      });
+      return newCommunity;
     });
     res.status(201).json(community);
   } catch (error) {
@@ -328,6 +339,24 @@ var getCommunity = async (req, res) => {
             name: true,
             email: true,
             image: true
+          }
+        },
+        chats: {
+          include: {
+            messages: {
+              take: 10,
+              orderBy: {
+                createdAt: "desc"
+              },
+              include: {
+                sender: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -664,7 +693,7 @@ var getUserCommunities = async (req, res) => {
 };
 
 // src/routes/community.route.ts
-var router2 = express3__default.default.Router();
+var router2 = express4__default.default.Router();
 router2.post("/", isLoggedIn, upload.optional().single("image"), createCommunity);
 router2.get("/", getAllCommunities);
 router2.get("/user", isLoggedIn, getUserCommunities);
@@ -675,9 +704,413 @@ router2.post("/:id/join", isLoggedIn, joinCommunity);
 router2.post("/:id/leave", isLoggedIn, leaveCommunity);
 router2.get("/:id/members", getCommunityMembers);
 var community_route_default = router2;
+var prisma2 = new client.PrismaClient();
+
+// src/controllers/chat.controller.ts
+var createChat = async (req, res) => {
+  try {
+    const { communityId } = req.body;
+    const userId = req.user.id;
+    if (!communityId) {
+      res.status(400).json({ message: "Community ID is required" });
+      return;
+    }
+    const community = await prisma2.community.findUnique({
+      where: { id: communityId },
+      include: {
+        members: {
+          where: { userId }
+        }
+      }
+    });
+    if (!community) {
+      res.status(404).json({ message: "Community not found" });
+      return;
+    }
+    if (community.members.length === 0) {
+      res.status(403).json({ message: "You must be a member of the community to create a chat" });
+      return;
+    }
+    const newChat = await prisma2.chat.create({
+      data: {
+        communityId
+      }
+    });
+    res.status(201).json(newChat);
+  } catch (error) {
+    console.error("Create Chat Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+var getCommunityChats = async (req, res) => {
+  try {
+    const { communityId } = req.params;
+    const userId = req.user.id;
+    const community = await prisma2.community.findUnique({
+      where: { id: communityId },
+      include: {
+        members: {
+          where: { userId }
+        }
+      }
+    });
+    if (!community) {
+      res.status(404).json({ message: "Community not found" });
+      return;
+    }
+    const isMember = community.members.length > 0 || community.ownerId === userId;
+    if (!isMember) {
+      res.status(403).json({ message: "You must be a member of the community to view chats" });
+      return;
+    }
+    const chats = await prisma2.chat.findMany({
+      where: {
+        communityId
+      },
+      orderBy: {
+        updatedAt: "desc"
+      },
+      include: {
+        _count: {
+          select: {
+            messages: true
+          }
+        }
+      }
+    });
+    res.status(200).json(chats);
+  } catch (error) {
+    console.error("Get Community Chats Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+var getChatById = async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const userId = req.user.id;
+    const chat = await prisma2.chat.findUnique({
+      where: {
+        id: chatId
+      },
+      include: {
+        community: {
+          include: {
+            members: {
+              where: { userId }
+            }
+          }
+        },
+        messages: {
+          include: {
+            sender: {
+              select: {
+                id: true,
+                name: true,
+                image: true
+              }
+            }
+          },
+          orderBy: {
+            createdAt: "asc"
+          }
+        }
+      }
+    });
+    if (!chat) {
+      res.status(404).json({ message: "Chat room not found" });
+      return;
+    }
+    const isMember = chat.community.members.length > 0 || chat.community.ownerId === userId;
+    if (!isMember) {
+      res.status(403).json({ message: "You must be a member of the community to view this chat" });
+      return;
+    }
+    res.status(200).json(chat);
+  } catch (error) {
+    console.error("Get Chat Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+var deleteChat = async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const userId = req.user.id;
+    const chat = await prisma2.chat.findUnique({
+      where: { id: chatId },
+      include: {
+        community: true
+      }
+    });
+    if (!chat) {
+      res.status(404).json({ message: "Chat room not found" });
+      return;
+    }
+    const userRole = await prisma2.communitiesOnUsers.findUnique({
+      where: {
+        communityId_userId: {
+          communityId: chat.communityId,
+          userId
+        }
+      }
+    });
+    if (chat.community.ownerId !== userId && (!userRole || userRole.role !== "ADMIN")) {
+      res.status(403).json({ message: "Not authorized to delete this chat room" });
+      return;
+    }
+    await prisma2.chat.delete({
+      where: { id: chatId }
+    });
+    res.status(200).json({ message: "Chat room deleted successfully" });
+  } catch (error) {
+    console.error("Delete Chat Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+var io;
+var authenticateSocket = async (socket, next) => {
+  try {
+    const cookies = socket.handshake.headers.cookie;
+    if (!cookies) {
+      return next(new Error("Authentication failed: No cookies provided"));
+    }
+    const cookieArray = cookies.split(";").map((cookie) => cookie.trim());
+    const tokenCookie = cookieArray.find((cookie) => cookie.startsWith("token="));
+    if (!tokenCookie) {
+      return next(new Error("Authentication failed: No token cookie"));
+    }
+    const token = tokenCookie.split("=")[1];
+    if (!process.env.JWT_SECRET) {
+      return next(new Error("JWT_SECRET is not configured"));
+    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!decoded || !decoded.id) {
+      return next(new Error("Authentication failed: Invalid token"));
+    }
+    const user = await prisma2.user.findUnique({
+      where: { id: decoded.id }
+    });
+    if (!user) {
+      return next(new Error("Authentication failed: User not found"));
+    }
+    socket.user = user;
+    next();
+  } catch (error) {
+    console.error("Socket authentication error:", error);
+    next(new Error("Authentication failed"));
+  }
+};
+var initSocketServer = (server2) => {
+  io = new socket_io.Server(server2, {
+    cors: {
+      origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+      methods: ["GET", "POST"],
+      credentials: true
+    },
+    path: "/socket.io/",
+    transports: ["websocket", "polling"],
+    // Increase ping timeout to prevent premature disconnections
+    pingTimeout: 6e4
+  });
+  io.use(authenticateSocket);
+  io.on("connection", (socket) => {
+    console.log(`User connected: ${socket.user?.id}`);
+    socket.on("joinRoom", (roomId) => {
+      socket.join(roomId);
+      console.log(`User ${socket.user?.id} joined room ${roomId}`);
+    });
+    socket.on("leaveRoom", (roomId) => {
+      socket.leave(roomId);
+      console.log(`User ${socket.user?.id} left room ${roomId}`);
+    });
+    socket.on("disconnect", () => {
+      console.log(`User disconnected: ${socket.user?.id}`);
+    });
+  });
+};
+
+// src/controllers/message.controller.ts
+var createMessage = async (req, res) => {
+  try {
+    const { content, chatId } = req.body;
+    const userId = req.user.id;
+    if (!content || !chatId) {
+      res.status(400).json({ message: "Content and chat ID are required" });
+      return;
+    }
+    const chat = await prisma2.chat.findUnique({
+      where: { id: chatId },
+      include: { community: { include: { members: true } } }
+    });
+    if (!chat) {
+      res.status(404).json({ message: "Chat not found" });
+      return;
+    }
+    const isMember = chat.community.members.some((member) => member.userId === userId);
+    if (!isMember) {
+      res.status(403).json({ message: "You are not a member of this community" });
+      return;
+    }
+    const message = await prisma2.message.create({
+      data: {
+        content,
+        senderId: userId,
+        chatId,
+        communityId: chat.communityId
+      },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            image: true
+          }
+        }
+      }
+    });
+    io.to(chatId).emit("newMessage", message);
+    res.status(201).json(message);
+  } catch (error) {
+    console.error("Create Message Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+var getMessagesByChat = async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const userId = req.user.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const skip = (page - 1) * limit;
+    const chat = await prisma2.chat.findUnique({
+      where: { id: chatId },
+      include: { community: { include: { members: true } } }
+    });
+    if (!chat) {
+      res.status(404).json({ message: "Chat not found" });
+      return;
+    }
+    const isMember = chat.community.members.some((member) => member.userId === userId);
+    if (!isMember) {
+      res.status(403).json({ message: "You are not a member of this community" });
+      return;
+    }
+    const total = await prisma2.message.count({
+      where: { chatId }
+    });
+    const messages = await prisma2.message.findMany({
+      where: { chatId },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            image: true
+          }
+        }
+      }
+    });
+    res.status(200).json({
+      messages,
+      total,
+      hasMore: total > skip + limit,
+      page,
+      limit
+    });
+  } catch (error) {
+    console.error("Get Messages Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+var updateMessage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+    const userId = req.user.id;
+    if (!content) {
+      res.status(400).json({ message: "Content is required" });
+      return;
+    }
+    const message = await prisma2.message.findUnique({
+      where: { id },
+      include: { chat: true }
+    });
+    if (!message) {
+      res.status(404).json({ message: "Message not found" });
+      return;
+    }
+    if (message.senderId !== userId) {
+      res.status(403).json({ message: "You can only edit your own messages" });
+      return;
+    }
+    const updatedMessage = await prisma2.message.update({
+      where: { id },
+      data: { content },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            name: true,
+            image: true
+          }
+        }
+      }
+    });
+    if (message.chatId) {
+      io.to(message.chatId).emit("messageUpdated", updatedMessage);
+    }
+    res.status(200).json(updatedMessage);
+  } catch (error) {
+    console.error("Update Message Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+var deleteMessage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const message = await prisma2.message.findUnique({
+      where: { id },
+      include: { chat: true }
+    });
+    if (!message) {
+      res.status(404).json({ message: "Message not found" });
+      return;
+    }
+    if (message.senderId !== userId) {
+      res.status(403).json({ message: "You can only delete your own messages" });
+      return;
+    }
+    const chatId = message.chatId;
+    await prisma2.message.delete({
+      where: { id }
+    });
+    if (chatId) {
+      io.to(chatId).emit("messageDeleted", { id });
+    }
+    res.status(200).json({ message: "Message deleted successfully" });
+  } catch (error) {
+    console.error("Delete Message Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// src/routes/chat.route.ts
+var router3 = express4__default.default.Router();
+router3.post("/", isLoggedIn, createChat);
+router3.get("/community/:communityId", isLoggedIn, getCommunityChats);
+router3.get("/:chatId", isLoggedIn, getChatById);
+router3.delete("/:chatId", isLoggedIn, deleteChat);
+router3.post("/messages", isLoggedIn, createMessage);
+router3.get("/:chatId/messages", isLoggedIn, getMessagesByChat);
+router3.patch("/messages/:id", isLoggedIn, updateMessage);
+router3.delete("/messages/:id", isLoggedIn, deleteMessage);
+var chat_route_default = router3;
 dotenv__default.default.config({ path: path__default.default.resolve(process.cwd(), ".env") });
-var app = express3__default.default();
-app.use(express3__default.default.json());
+var app = express4__default.default();
+app.use(express4__default.default.json());
 app.use(cookieParser__default.default());
 app.use(cors__default.default({
   origin: process.env.NODE_ENV === "development" ? "http://localhost:3000" : process.env.FRONTEND_URL,
@@ -688,6 +1121,7 @@ app.get("/", (_, res) => {
 });
 app.use("/api/user", user_route_default);
 app.use("/api/communities", community_route_default);
+app.use("/api/chats", chat_route_default);
 app.use((err, req, res, next) => {
   console.error("Server Error:", err);
   res.status(500).json({
@@ -707,9 +1141,11 @@ if (!process.env.JWT_SECRET) {
   console.error("Please check your .env file");
   process.exit(1);
 }
-var port = process.env.PORT || 8e3;
-app_default.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+var PORT = parseInt(process.env.PORT || "8000", 10);
+var server = http__default.default.createServer(app_default);
+initSocketServer(server);
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 process.on("unhandledRejection", (reason) => {
   console.error("Unhandled Rejection:", reason.message);

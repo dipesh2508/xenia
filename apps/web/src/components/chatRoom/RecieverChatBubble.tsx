@@ -1,14 +1,31 @@
 import React from "react";
+import { Avatar, AvatarFallback, AvatarImage } from "@repo/ui/components/ui/avatar";
 
-const RecieverChatBubble = ({ content }: { content: string }) => {
+interface RecieverChatBubbleProps {
+  content: string;
+  sender?: string;
+  avatar?: string | null;
+}
+
+const RecieverChatBubble = ({ 
+  content, 
+  sender = "User", 
+  avatar = null 
+}: RecieverChatBubbleProps) => {
   return (
-    <div className="flex flex-col self-start mt-2 gap-1">
-      <div className="rounded-xl bg-chatroom-secondary shadow-sm shadow-primary-1 px-3 py-2 font-medium text-sm">
-        {content}
+    <div className="flex items-start gap-2 max-w-sm">
+      <Avatar className="h-8 w-8">
+        <AvatarImage src={avatar || ""} alt={sender} />
+        <AvatarFallback>
+          {sender.charAt(0).toUpperCase()}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex flex-col gap-1">
+        <span className="text-xs text-muted-foreground">{sender}</span>
+        <div className="bg-chatroom-input rounded-bl-lg rounded-r-lg p-3 text-sm">
+          {content}
+        </div>
       </div>
-      <p className="text-secondary-4 text-left text-xs font-normal tracking-tight">
-        Today 11:54
-      </p>
     </div>
   );
 };
