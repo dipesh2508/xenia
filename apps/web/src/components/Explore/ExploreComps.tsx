@@ -1,11 +1,11 @@
 "use client";
-import ExploreCards from "@/components/Explore/ExploreCards";
 import ExploreSearch from "@/components/Explore/ExploreSearch";
 import { useApi } from "@/hooks/useApi";
 import { toast } from "sonner";
 import React, { useState } from "react";
 import LogoFull from "@/assets/logo-full-xenia-slate.svg";
 import Image from "next/image";
+import ExploreCard from "./ExploreCard";
 
 interface Owner {
   id: string;
@@ -30,7 +30,6 @@ interface Community {
 }
 
 type Communities = Community[];
-
 const NoCommunitiesFound = () => (
   <div className="relative left-96 top-20">
     <p className="text-center col-span-full my-2 text-primary-6 text-lg text-medium">
@@ -85,7 +84,7 @@ const ExploreComps = () => {
 
           return filteredData && filteredData?.length > 0 ? (
             filteredData?.map((item) => (
-              <ExploreCards key={item.id} data={item} />
+              <ExploreCard key={item.id} data={item} />
             ))
           ) : (
             <NoCommunitiesFound />
