@@ -265,16 +265,19 @@ var deleteUser = async (req, res) => {
 var isLoggedIn = async (req, res, next) => {
   const token = req.cookies.token;
   if (!token) {
+    console.error("No token found in cookies");
     return res.status(401).json({
       message: "Unauthorized"
     });
   }
   try {
     if (!process.env.JWT_SECRET) {
+      console.error("Critical environment variable JWT_SECRET is missing!");
       throw new Error("JWT_SECRET is not defined");
     }
     const decoded = jwt__default.default.verify(token, process.env.JWT_SECRET);
     if (!decoded.id) {
+      console.error("Decoded id is missing from token");
       return res.status(401).json({
         message: "Unauthorized"
       });
@@ -292,6 +295,7 @@ var isLoggedIn = async (req, res, next) => {
         }
       });
       if (!user) {
+        console.error("User not found in database");
         return res.status(401).json({
           message: "User not found."
         });
