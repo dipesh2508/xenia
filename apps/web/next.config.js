@@ -9,7 +9,7 @@ const nextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/:path*`,
+        destination: `https://xenia-api.vercel.app/:path*`,
         has: [
           {
             type: "cookie",
@@ -19,7 +19,7 @@ const nextConfig = {
       },
       {
         source: "/socket.io/:path*",
-        destination: `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/socket.io/:path*`,
+        destination: `https://xenia-api.vercel.app/socket.io/:path*`,
       },
     ];
   },
