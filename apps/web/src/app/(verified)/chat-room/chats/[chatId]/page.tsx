@@ -164,7 +164,7 @@ const Page = ({ params }: { params: { chatId: string } }) => {
 
       // Initialize socket connection with proper configuration
       const socketInstance = io(
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+        process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000",
         {
           withCredentials: true,
           transports: ["websocket", "polling"], // Try WebSocket first, fallback to polling
