@@ -12,5 +12,20 @@
             "src": "/(.*)",
             "dest": "dist/index.js"
         }
-    ]
+    ],
+    "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "https://xenia-web.vercel.app"
+        },
+        {
+          "key": "Access-Control-Allow-Credentials",
+          "value": "true"
+        }
+      ]
+    }
+  ]
 }
