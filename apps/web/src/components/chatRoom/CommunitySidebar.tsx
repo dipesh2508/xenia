@@ -25,63 +25,6 @@ import { useApi } from "@/hooks/useApi";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-const data = {
-  communities: [
-    {
-      groupname: "Tech Enthusiasts",
-      date: "09:34 AM",
-      teaser: "Has anyone tried the new AI model released today?",
-    },
-    {
-      groupname: "Fitness Warriors",
-      date: "10:15 AM",
-      teaser:
-        "Just finished a 5K run! Who's joining me for the next challenge?",
-    },
-    {
-      groupname: "Startup Founders Hub",
-      date: "11:45 AM",
-      teaser: "Does anyone have experience with early-stage VC funding?",
-    },
-    {
-      groupname: "UI/UX Designers",
-      date: "01:30 PM",
-      teaser: "Check out this new color palette trend for 2025!",
-    },
-    {
-      groupname: "React Developers",
-      date: "02:20 PM",
-      teaser: "Anyone facing issues with React 18 hydration errors?",
-    },
-    {
-      groupname: "Healthcare Innovators",
-      date: "03:50 PM",
-      teaser: "How do you see blockchain improving patient data security?",
-    },
-    {
-      groupname: "Gamers United",
-      date: "04:40 PM",
-      teaser: "GG! That last match was insane 🔥",
-    },
-    {
-      groupname: "Blockchain Builders",
-      date: "06:15 PM",
-      teaser: "I just deployed my first smart contract! 🎉",
-    },
-    {
-      groupname: "Photography Club",
-      date: "07:25 PM",
-      teaser: "Took an amazing sunset shot today! What do you guys think?",
-    },
-    {
-      groupname: "Mental Wellness Space",
-      date: "08:55 PM",
-      teaser:
-        "Remember to take breaks and breathe. Your mental health matters!",
-    },
-  ],
-};
-
 interface Owner {
   id: string;
   image: string | null;
@@ -95,6 +38,19 @@ interface CountInfo {
 interface Community {
   createdAt: string;
   description: string;
+  chats: {
+    id: string;
+    createdAt: string;
+    messages: {
+      chatId: string;
+      content: string;
+      createdAt: string;
+      sender: {
+        id: string;
+        name: string;
+      };
+    }[];
+  }[];
   id: string;
   image: string | null;
   name: string;
@@ -104,7 +60,13 @@ interface Community {
   _count: CountInfo;
 }
 
-type Communities = Community[];
+type Communities = {
+  communityId: string;
+  userId: string;
+  role: string;
+  community: Community;
+}[];
+
 const CommunitySidebar = () => {
   const router = useRouter();
   const {
@@ -128,6 +90,20 @@ const CommunitySidebar = () => {
     },
   });
 
+  const formatMessageDate = (isoDate: string) => {
+    if (isoDate === "") return "";
+    if (!isoDate) return "";
+    const messageDate = new Date(isoDate);
+    const today = new Date();
+
+    return messageDate.toLocaleDateString() === today.toLocaleDateString()
+      ? messageDate.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : messageDate.toLocaleDateString();
+  };
+
   if (getLoading) return <p>Loading...</p>;
   if (getError) return <p>Error: {getError.message}</p>;
   return (
@@ -135,7 +111,7 @@ const CommunitySidebar = () => {
       collapsible="none"
       className=" border-l rounded-tl-2xl rounded-bl-2xl overflow-y-auto flex-shrink-0 h-full max-h-[calc(100vh-32px)] bg-white"
     >
-      <SidebarHeader className="gap-3.5 border-b p-4 ">
+      <SidebarHeader className="gap-3.5 border-b p-4 pt-12">
         <div className="flex w-full items-center justify-between">
           <div className="text-2xl font-semibold text-foreground">
             Communities
@@ -161,7 +137,7 @@ const CommunitySidebar = () => {
             {communities?.map((group, index) => (
               <div key={index}>
                 <Link
-                  href={`/chat-room/chats/${group.id}`}
+                  href={`/chat-room/chats/${group.communityId}`}
                   key={index}
                   className="flex items-center justify-center hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 >
@@ -175,14 +151,28 @@ const CommunitySidebar = () => {
                   <div className="flex flex-col items-start gap-2 whitespace-nowrap p-4 pr-0 text-sm leading-tight">
                     <div className="flex w-full items-center gap-2">
                       <span className="text-foreground font-medium">
-                        {group.name}
+                        {group.community.name}
                       </span>{" "}
-                      <span className="ml-auto text-xs">time - last msg</span>
+                      <span className="ml-auto text-xs">
+                        {formatMessageDate(
+                          group.community.chats[0]?.messages[0]?.createdAt || ""
+                        )}
+                      </span>
                     </div>
                     {/* <span className="font-medium">{group.subject}</span> */}
                     <div className="flex w-full items-center justify-between">
                       <span className="line-clamp-2 w-[260px] whitespace-break-spaces text-xs">
-                        {`Display last msg, for now grp description ${group.description}`}
+                        {group.community.chats[0]?.messages[0]?.sender.name} -{" "}
+                        {(
+                          group.community.chats[0]?.messages[0]?.content ||
+                          "No messages yet"
+                        ).slice(0, 15) +
+                          ((
+                            group.community.chats[0]?.messages[0]?.content ||
+                            "No messages yet"
+                          ).length > 15
+                            ? "..."
+                            : "")}
                       </span>
                       <FaEllipsisVertical className="text-foreground/30" />
                     </div>

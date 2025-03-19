@@ -31,26 +31,33 @@ export const isLoggedIn = async (
       });
     }
 
-    const user = await prisma.user.findUnique({
-      where: {
-        id: decoded.id,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-      },
-    });
+    try {
+      const user = await prisma.user.findUnique({
+        where: {
+          id: decoded.id,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+        },
+      });
 
-    if (!user) {
-      return res.status(401).json({
-        message: "User not found.",
+      if (!user) {
+        return res.status(401).json({
+          message: "User not found.",
+        });
+      }
+
+      req.user = user;
+      next();
+    } catch (dbError) {
+      console.error("Database error during authentication:", dbError);
+      return res.status(503).json({
+        message: "Service temporarily unavailable. Please try again later.",
       });
     }
-
-    req.user = user;
-    next();
   } catch (error) {
     console.error("Authentication Error:", error);
     return res.status(401).json({
