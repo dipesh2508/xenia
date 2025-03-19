@@ -48,7 +48,7 @@ const ExploreCards = ({ data }: { data: Community }) => {
           fill
         />
       </div>
-      <div className="absolute inset-0 bg-black/60 z-10 rounded-3xl"></div>
+      <div className="absolute inset-0 bg-black/35 z-10 rounded-3xl"></div>
       <CardHeader className="z-20 relative mx-2">
         <Button
           className="border-chatroom-secondary border-2 hover:bg-white/10 bg-transparent rounded-xl"

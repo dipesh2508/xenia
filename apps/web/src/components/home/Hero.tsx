@@ -3,6 +3,7 @@ import Image from "next/image";
 import hero from "@/assets/HeroImg.png";
 import { V2 } from "@/lib/fonts";
 import MotionDiv from "@/components/animations/MotionDiv";
+import Link from "next/link";
 
 const Hero = () => {
   return (
@@ -35,9 +36,11 @@ const Hero = () => {
           whileTap={{ y: 2 }}
           transition={{ duration: 0.3 }}
         >
-          <Button size={"lg"} className="px-5 py-6" variant={"gradient"}>
-            Start Chatting Now
-          </Button>
+          <Link href="/sign-up">
+            <Button size={"lg"} className="px-5 py-6" variant={"gradient"}>
+              Start Chatting Now
+            </Button>
+          </Link>
         </MotionDiv>
       </MotionDiv>
       <MotionDiv

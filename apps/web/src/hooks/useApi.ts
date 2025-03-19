@@ -22,6 +22,7 @@ interface UseApiOptions<T> {
 interface MutateOptions {
   body?: any
   headers?: Record<string, string>
+  url?: string
 }
 
 export function useApi<T>(
@@ -47,7 +48,7 @@ export function useApi<T>(
       setIsLoading(true)
       
       const requestConfig = {
-        url,
+        url: mutateOptions.url || url,
         method,
         headers: {
           ...initialHeaders,

@@ -1,9 +1,9 @@
 "use client";
 import Image from "next/image";
 import RegisterImg from "@/assets/RegisterUser.png";
-import { useApi } from "@/hooks/useApi";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+// import { useApi } from "@/hooks/useApi";
+// import { toast } from "sonner";
+// import { useRouter } from "next/navigation";
 
 export default function AuthLayout({
   children,

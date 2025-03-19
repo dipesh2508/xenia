@@ -4,6 +4,7 @@ import Image from "next/image";
 import HeartSmilie from "@/assets/HeartSmilie.png";
 import Smilie from "@/assets/Smilie.png";
 import MotionDiv from "../animations/MotionDiv";
+import Link from "next/link";
 const Cta = () => {
   return (
     <MotionDiv
@@ -49,9 +50,11 @@ const Cta = () => {
           duration: 0.3,
         }}
       >
-        <Button size={"lg"} className="px-5 py-6" variant={"gradient"}>
-          Let&apos;s Get Started!
-        </Button>
+        <Link href="/sign-up">
+          <Button size={"lg"} className="px-5 py-6" variant={"gradient"}>
+            Let&apos;s Get Started!
+          </Button>
+        </Link>
       </MotionDiv>
     </MotionDiv>
   );
