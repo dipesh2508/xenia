@@ -70,27 +70,30 @@ const ExploreComps = () => {
 
   if (getLoading) return <p>Loading...</p>;
   if (getError) return <p>Error: {getError.message}</p>;
+  if (getData === undefined || getData?.length === 0)
+    return <NoCommunitiesFound />;
   return (
     <>
       <ExploreSearch query={query} setQuery={setQuery} />
       <div className="mx-24 grid lg:grid-cols-4 md:grid-cols-2 grid-cols-1 gap-6 h-full overflow-y-auto mb-8">
-        {getData && getData.length > 0 ? (
-          (() => {
-            const filteredData = getData.filter((item) =>
-              item.name.toLowerCase().includes(query.toLowerCase())
-            );
+        {/* {getData && getData.length > 0 ? 
+        ( */}
+        {(() => {
+          const filteredData = getData?.filter((item) =>
+            item.name.toLowerCase().includes(query.toLowerCase())
+          );
 
-            return filteredData.length > 0 ? (
-              filteredData.map((item) => (
-                <ExploreCards key={item.id} data={item} />
-              ))
-            ) : (
-              <NoCommunitiesFound />
-            );
-          })()
-        ) : (
-          <NoCommunitiesFound />
-        )}
+          return filteredData && filteredData?.length > 0 ? (
+            filteredData?.map((item) => (
+              <ExploreCards key={item.id} data={item} />
+            ))
+          ) : (
+            <NoCommunitiesFound />
+          );
+        })()}
+        {/* // ) : (
+        //   <NoCommunitiesFound />
+        // )} */}
       </div>
     </>
   );
