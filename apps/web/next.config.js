@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@repo/ui"],
+  images: {
+    domains: ["picsum.photos"],
+  },
   async rewrites() {
     return [
       {
