@@ -49,10 +49,16 @@ export const userSignup = async (req: Request, res: Response): Promise<void> => 
       }
     });
 
-    // Generate token first
-    generateJwtToken(newUser.id, res);
+    // Updated cookie settings
+    const token = generateJwtToken(newUser.id);
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      path: "/"
+    });
 
-    // Then send response
     res.status(201).json(newUser);
   } catch (error) {
     console.error("Signup Error:", error);
@@ -100,7 +106,14 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Generate token first
-    generateJwtToken(user.id, res);
+    const token = generateJwtToken(user.id);
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      path: "/"
+    });
 
     // Then send response without password
     res.status(200).json({
@@ -118,7 +131,12 @@ export const userLogin = async (req: Request, res: Response): Promise<void> => {
 
 export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
-    res.clearCookie("token");
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      path: "/"
+    });
     res.status(200).json({
       message: "Logged out successfully.",
     });

@@ -111,15 +111,6 @@ var generateJwtToken = (userId, res) => {
   const token = jwt__default.default.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: "30d"
   });
-  if (res) {
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 30 * 24 * 60 * 60 * 1e3
-      // 30 days
-    });
-  }
   return token;
 };
 
@@ -162,7 +153,15 @@ var userSignup = async (req, res) => {
         email: true
       }
     });
-    generateJwtToken(newUser.id, res);
+    const token = generateJwtToken(newUser.id);
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1e3,
+      // 30 days
+      path: "/"
+    });
     res.status(201).json(newUser);
   } catch (error) {
     console.error("Signup Error:", error);
@@ -202,7 +201,15 @@ var userLogin = async (req, res) => {
       });
       return;
     }
-    generateJwtToken(user.id, res);
+    const token = generateJwtToken(user.id);
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      maxAge: 30 * 24 * 60 * 60 * 1e3,
+      // 30 days
+      path: "/"
+    });
     res.status(200).json({
       id: user.id,
       name: user.name,
@@ -217,7 +224,12 @@ var userLogin = async (req, res) => {
 };
 var logout = async (req, res) => {
   try {
-    res.clearCookie("token");
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      path: "/"
+    });
     res.status(200).json({
       message: "Logged out successfully."
     });
