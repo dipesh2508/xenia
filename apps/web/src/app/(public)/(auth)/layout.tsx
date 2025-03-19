@@ -1,23 +1,23 @@
 "use client";
 import Image from "next/image";
 import RegisterImg from "@/assets/RegisterUser.png";
-import { useApi } from "@/hooks/useApi";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+// import { useApi } from "@/hooks/useApi";
+// import { toast } from "sonner";
+// import { useRouter } from "next/navigation";
 
 export default function AuthLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const router = useRouter();
-  const { data } = useApi(`/user/checkAuth`, {
-    method: "GET",
-    onSuccess: () => {
-      toast.success("User Logged In", {
-        description: "User is already logged in",
-      });
-      router.push("/explore");
-    },
-  });
+  // const router = useRouter();
+  // const { data } = useApi(`/user/checkAuth`, {
+  //   method: "GET",
+  //   onSuccess: () => {
+  //     toast.success("User Logged In", {
+  //       description: "User is already logged in",
+  //     });
+  //     router.push("/explore");
+  //   },
+  // });
   return (
     <div className="flex justify-between items-center lg:flex-row flex-col-reverse">
       <Image src={RegisterImg} alt="register image" height={700} />
