@@ -3,6 +3,7 @@ import React from "react";
 import EasyShare from "@/assets/PdfShare.png";
 import { Button } from "@repo/ui/components/ui/button";
 import MotionDiv from "../animations/MotionDiv";
+import Link from "next/link";
 
 const PdfShare = () => {
   return (
@@ -31,9 +32,11 @@ const PdfShare = () => {
           whileTap={{ y: 2 }}
           transition={{ duration: 0.3 }}
         >
-          <Button size={"lg"} className="px-5 py-6" variant={"gradient"}>
-            Start Chatting Now
-          </Button>
+          <Link href="/sign-up">
+            <Button size={"lg"} className="px-5 py-6" variant={"gradient"}>
+              Start Chatting Now
+            </Button>
+          </Link>
         </MotionDiv>
       </MotionDiv>
 
