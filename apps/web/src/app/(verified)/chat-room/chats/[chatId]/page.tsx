@@ -82,122 +82,134 @@ const Page = ({ params }: { params: { chatId: string } }) => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Add a separate useApi hook for fetching older messages
-  const { mutate: fetchOlderMessagesApi } = useApi(`/chats/${chatId}/messages`, {
-    method: 'GET',
-    enabled: false,
-  });
+  const { mutate: fetchOlderMessagesApi } = useApi(
+    `/chats/${chatId}/messages`,
+    {
+      method: "GET",
+      enabled: false,
+    }
+  );
 
   const loadOlderMessages = async () => {
     if (isLoadingMore || !community?.chats?.[0]?.id) return;
-    
+
     setIsLoadingMore(true);
     try {
       const nextPage = currentPage + 1;
-      const response = await fetchOlderMessagesApi({
-        url: `/chats/${community.chats[0].id}/messages?page=${nextPage}&limit=20`
-      }) as MessageResponse;
+      const response = (await fetchOlderMessagesApi({
+        url: `/chats/${community.chats[0].id}/messages?page=${nextPage}&limit=20`,
+      })) as MessageResponse;
 
       setIsNewMessage(false); // Indicate these are old messages
-      setMessages(prev => [...response.messages.reverse(), ...prev]);
+      setMessages((prev) => [...response.messages.reverse(), ...prev]);
       setHasMore(response.hasMore);
       setCurrentPage(response.page);
     } catch (error: any) {
       toast.error("Failed to load older messages", {
-        description: error.message
+        description: error.message,
       });
     } finally {
       setIsLoadingMore(false);
     }
   };
 
-  const {
-    data: community,
-    isLoading: getLoading,
-  } = useApi<Community>(`/communities/${chatId}`, {
-    method: "GET",
-    onSuccess: (data) => {
-      console.log(data);
-      toast.success("Community loaded", {
-        description: `Let's chat in ${data.name}`,
-      });
-      
-      // Use the messages already included in the community response
-      if (data.chats && data.chats.length > 0 && data.chats[0]?.messages) {
-        // Set the messages from the community response - sort to show oldest first
-        const sortedMessages = [...(data.chats[0].messages || [])].sort(
-          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
-        setMessages(sortedMessages);
-        // Set hasMore if there are more than 20 initial messages
-        setHasMore(data.chats[0]._count.messages > 20);
-        // Set initial load to true when first messages are set
-        setIsInitialLoad(true);
-      }
-    },
-    onError: (error) => {
-      toast.error("Community not fetched successfully", {
-        description: error.message,
-      });
-    },
-  });
+  const { data: community, isLoading: getLoading } = useApi<Community>(
+    `/communities/${chatId}`,
+    {
+      method: "GET",
+      onSuccess: (data) => {
+        console.log(data);
+        toast.success("Community loaded", {
+          description: `Let's chat in ${data.name}`,
+        });
 
-  const { mutate: sendMessageMutation, isLoading: isSendingMessage } = useApi("/chats/messages", {
-    method: "POST",
-    onError: (error) => {
-      toast.error("Failed to send message", {
-        description: error.message
-      });
-    },
-  });
+        // Use the messages already included in the community response
+        if (data.chats && data.chats.length > 0 && data.chats[0]?.messages) {
+          // Set the messages from the community response - sort to show oldest first
+          const sortedMessages = [...(data.chats[0].messages || [])].sort(
+            (a, b) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+          setMessages(sortedMessages);
+          // Set hasMore if there are more than 20 initial messages
+          setHasMore(data.chats[0]._count.messages > 20);
+          // Set initial load to true when first messages are set
+          setIsInitialLoad(true);
+        }
+      },
+      onError: (error) => {
+        toast.error("Community not fetched successfully", {
+          description: error.message,
+        });
+      },
+    }
+  );
+
+  const { mutate: sendMessageMutation, isLoading: isSendingMessage } = useApi(
+    "/chats/messages",
+    {
+      method: "POST",
+      onError: (error) => {
+        toast.error("Failed to send message", {
+          description: error.message,
+        });
+      },
+    }
+  );
 
   // Connect to socket when component mounts and community data is available
   useEffect(() => {
     if (community?.chats && community.chats.length > 0) {
       const chatId = community.chats[0]?.id;
-      
+
       // Initialize socket connection with proper configuration
-      const socketInstance = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000', {
-        withCredentials: true,
-        transports: ['websocket', 'polling'],  // Try WebSocket first, fallback to polling
-        reconnectionAttempts: 5,               // Try to reconnect 5 times
-        reconnectionDelay: 1000,               // Start with 1 second delay
-        reconnectionDelayMax: 5000,            // Maximum 5 seconds delay
-        timeout: 20000                         // Connection timeout
-      });
+      const socketInstance = io(
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+        {
+          withCredentials: true,
+          transports: ["websocket", "polling"], // Try WebSocket first, fallback to polling
+          reconnectionAttempts: 5, // Try to reconnect 5 times
+          reconnectionDelay: 1000, // Start with 1 second delay
+          reconnectionDelayMax: 5000, // Maximum 5 seconds delay
+          timeout: 20000, // Connection timeout
+        }
+      );
 
-      socketInstance.on('connect', () => {
-        console.log('Socket connected with ID:', socketInstance.id);
+      socketInstance.on("connect", () => {
+        console.log("Socket connected with ID:", socketInstance.id);
         setIsConnected(true);
-        
+
         // Join the chat room once connected
-        socketInstance.emit('joinRoom', chatId);
+        socketInstance.emit("joinRoom", chatId);
       });
 
-      socketInstance.on('connect_error', (error) => {
-        console.error('Socket connection error:', error);
+      socketInstance.on("connect_error", (error) => {
+        console.error("Socket connection error:", error);
         toast.error("Socket connection error", {
-          description: "Trying to reconnect..."
+          description: "Trying to reconnect...",
         });
       });
 
-      socketInstance.on('disconnect', () => {
-        console.log('Socket disconnected');
+      socketInstance.on("disconnect", () => {
+        console.log("Socket disconnected");
         setIsConnected(false);
       });
 
-      socketInstance.on('newMessage', (message: Message) => {
+      socketInstance.on("newMessage", (message: Message) => {
         setIsNewMessage(true); // Indicate this is a new message
-        setMessages(prev => [...prev, message]);
+        setMessages((prev) => [...prev, message]);
       });
 
-      socketInstance.on('messageUpdated', (updatedMessage: Message) => {
-        setMessages(prev => 
-          prev.map(msg => msg.id === updatedMessage.id ? updatedMessage : msg)
+      socketInstance.on("messageUpdated", (updatedMessage: Message) => {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === updatedMessage.id ? updatedMessage : msg
+          )
         );
       });
 
-      socketInstance.on('messageDeleted', ({ id }: { id: string }) => {
-        setMessages(prev => prev.filter(msg => msg.id !== id));
+      socketInstance.on("messageDeleted", ({ id }: { id: string }) => {
+        setMessages((prev) => prev.filter((msg) => msg.id !== id));
       });
 
       setSocket(socketInstance);
@@ -205,7 +217,7 @@ const Page = ({ params }: { params: { chatId: string } }) => {
       // Cleanup function
       return () => {
         if (socketInstance.connected) {
-          socketInstance.emit('leaveRoom', chatId);
+          socketInstance.emit("leaveRoom", chatId);
           socketInstance.disconnect();
         }
         socketInstance.off();
@@ -216,7 +228,9 @@ const Page = ({ params }: { params: { chatId: string } }) => {
   // Update scroll behavior to handle both initial load and new messages
   useEffect(() => {
     if (isNewMessage || isInitialLoad) {
-      messagesEndRef.current?.scrollIntoView({ behavior: isInitialLoad ? 'auto' : 'smooth' });
+      messagesEndRef.current?.scrollIntoView({
+        behavior: isInitialLoad ? "auto" : "smooth",
+      });
       setIsInitialLoad(false);
     }
   }, [messages, isNewMessage, isInitialLoad]);
@@ -224,7 +238,7 @@ const Page = ({ params }: { params: { chatId: string } }) => {
   // Send message function
   const sendMessage = async (content: string) => {
     if (!content.trim() || !community?.chats?.[0]?.id) return;
-    
+
     const chatId = community.chats[0].id;
 
     try {
@@ -232,10 +246,10 @@ const Page = ({ params }: { params: { chatId: string } }) => {
         body: {
           content,
           chatId,
-        }
+        },
       });
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
       // Error is already handled by the useApi hook
     }
   };
@@ -289,18 +303,17 @@ const Page = ({ params }: { params: { chatId: string } }) => {
                 </Button>
               )}
               <div className="flex flex-col gap-2 py-4">
-                {getLoading && <div className="text-center py-2">Loading messages...</div>}
+                {getLoading && (
+                  <div className="text-center py-2">Loading messages...</div>
+                )}
                 {!getLoading && messages.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     No messages yet. Start the conversation!
                   </div>
                 )}
-                {messages.map((message) => (
+                {messages.map((message) =>
                   message.senderId === user?.id ? (
-                    <MeChatBubble
-                      key={message.id}
-                      content={message.content}
-                    />
+                    <MeChatBubble key={message.id} content={message.content} />
                   ) : (
                     <RecieverChatBubble
                       key={message.id}
@@ -309,17 +322,17 @@ const Page = ({ params }: { params: { chatId: string } }) => {
                       avatar={message.sender.image}
                     />
                   )
-                ))}
+                )}
               </div>
               <div ref={messagesEndRef} />
             </div>
           </div>
         </div>
 
-        <SendMessage 
-          onSendMessage={sendMessage} 
-          isConnected={isConnected} 
-          disabled={!community?.chats?.[0]?.id || isSendingMessage} 
+        <SendMessage
+          onSendMessage={sendMessage}
+          isConnected={isConnected}
+          disabled={!community?.chats?.[0]?.id || isSendingMessage}
         />
       </div>
     </div>

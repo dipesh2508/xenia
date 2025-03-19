@@ -1,11 +1,11 @@
 "use client";
-import ExploreCards from "@/components/Explore/ExploreCards";
 import ExploreSearch from "@/components/Explore/ExploreSearch";
 import { useApi } from "@/hooks/useApi";
 import { toast } from "sonner";
 import React, { useState } from "react";
 import LogoFull from "@/assets/logo-full-xenia-slate.svg";
 import Image from "next/image";
+import ExploreCard from "./ExploreCard";
 
 interface Owner {
   id: string;
@@ -30,7 +30,6 @@ interface Community {
 }
 
 type Communities = Community[];
-
 const NoCommunitiesFound = () => (
   <div className="relative left-96 top-20">
     <p className="text-center col-span-full my-2 text-primary-6 text-lg text-medium">
@@ -70,27 +69,30 @@ const ExploreComps = () => {
 
   if (getLoading) return <p>Loading...</p>;
   if (getError) return <p>Error: {getError.message}</p>;
+  if (getData === undefined || getData?.length === 0)
+    return <NoCommunitiesFound />;
   return (
     <>
       <ExploreSearch query={query} setQuery={setQuery} />
-      <div className="mx-24 grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-6 h-full overflow-y-auto mb-8">
-        {getData && getData.length > 0 ? (
-          (() => {
-            const filteredData = getData.filter((item) =>
-              item.name.toLowerCase().includes(query.toLowerCase())
-            );
+      <div className="mx-24 grid lg:grid-cols-4 md:grid-cols-2 grid-cols-1 gap-6 h-full overflow-y-auto mb-8">
+        {/* {getData && getData.length > 0 ? 
+        ( */}
+        {(() => {
+          const filteredData = getData?.filter((item) =>
+            item.name.toLowerCase().includes(query.toLowerCase())
+          );
 
-            return filteredData.length > 0 ? (
-              filteredData.map((item) => (
-                <ExploreCards key={item.id} data={item} />
-              ))
-            ) : (
-              <NoCommunitiesFound />
-            );
-          })()
-        ) : (
-          <NoCommunitiesFound />
-        )}
+          return filteredData && filteredData?.length > 0 ? (
+            filteredData?.map((item) => (
+              <ExploreCard key={item.id} data={item} />
+            ))
+          ) : (
+            <NoCommunitiesFound />
+          );
+        })()}
+        {/* // ) : (
+        //   <NoCommunitiesFound />
+        // )} */}
       </div>
     </>
   );

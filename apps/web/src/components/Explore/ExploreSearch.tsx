@@ -46,7 +46,7 @@ const ExploreSearch = ({
 
   return (
     <div className="lg:mx-24 md:mx-10 mx-6 my-12">
-      <div className="mb-10">
+      <div className="mb-2">
         <form onSubmit={submitHandler}>
           <div className="relative">
             <Label htmlFor="search" className="sr-only">
@@ -55,7 +55,7 @@ const ExploreSearch = ({
             <Input
               id="search"
               placeholder="Search community..."
-              className="pl-11 bg-primary-1/50 focus:bg-primary-2/50 placeholder:text-primary-6 rounded-xl box-border py-6 placeholder:text-base text-primary-6 text-base border-primary-2/50"
+              className="pl-11 bg-primary-1/5 focus:bg-primary-1/10 placeholder:text-primary-6 rounded-xl box-border py-6 placeholder:text-base text-primary-6 text-base border-primary-1/50 border-2"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />

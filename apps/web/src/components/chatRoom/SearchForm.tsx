@@ -18,9 +18,9 @@ export function SearchForm({ ...props }: React.ComponentProps<"form">) {
           <SidebarInput
             id="search"
             placeholder="Search community..."
-            className="pl-8 bg-chatroom-accent/10"
+            className="pl-10 bg-primary-3/5 py-5 placeholder:text-secondary-5"
           />
-          <Search className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 select-none opacity-50" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 select-none opacity-50 text-secondary-9" />
         </SidebarGroupContent>
       </SidebarGroup>
     </form>

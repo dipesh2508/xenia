@@ -24,6 +24,8 @@ import {
 import { useApi } from "@/hooks/useApi";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { FaUserPlus } from "react-icons/fa6";
+import SidebarSkeleton from "./SidebarSkeleton";
 
 interface Owner {
   id: string;
@@ -104,21 +106,30 @@ const CommunitySidebar = () => {
       : messageDate.toLocaleDateString();
   };
 
-  if (getLoading) return <p>Loading...</p>;
+  if (getLoading) return <SidebarSkeleton />;
   if (getError) return <p>Error: {getError.message}</p>;
+  if (communities === undefined || communities?.length === 0)
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 mt-36">
+        <FaUserPlus className="text-3xl text-primary-6/60" />
+        <p className="text-center text-primary-6/60 text-base font-medium">
+          No communities joined yet
+        </p>
+      </div>
+    );
   return (
     <Sidebar
       collapsible="none"
       className=" border-l rounded-tl-2xl rounded-bl-2xl overflow-y-auto flex-shrink-0 h-full max-h-[calc(100vh-32px)] bg-white"
     >
-      <SidebarHeader className="gap-3.5 border-b p-4 pt-12">
+      <SidebarHeader className="gap-3.5 border-b p-4 pt-12pt-5">
         <div className="flex w-full items-center justify-between">
-          <div className="text-2xl font-semibold text-foreground">
+          <div className="text-2xl font-semibold text-primary-8/80">
             Communities
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger className="focus:outline-none">
-              <FaEllipsisVertical className="text-slate-600" />
+              <FaEllipsisVertical className="text-secondary-5" />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="hover:bg-white">
               <Link href={"/create-community"}>
@@ -159,7 +170,6 @@ const CommunitySidebar = () => {
                         )}
                       </span>
                     </div>
-                    {/* <span className="font-medium">{group.subject}</span> */}
                     <div className="flex w-full items-center justify-between">
                       <span className="line-clamp-2 w-[260px] whitespace-break-spaces text-xs">
                         {group.community.chats[0]?.messages[0]?.sender.name} -{" "}
@@ -178,7 +188,6 @@ const CommunitySidebar = () => {
                     </div>
                   </div>
                 </Link>
-
                 <hr className="w-80 text-center h-0.5 bg-zinc-400 mx-auto" />
               </div>
             ))}

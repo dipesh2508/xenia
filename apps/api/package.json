@@ -9,7 +9,6 @@
     "start": "nodemon src/index.ts",
     "ts.check": "tsc --project tsconfig.json",
     "add-build": "git add dist",
-    "postinstall": "prisma generate",
     "pre-commit": "npm run ts.check && npm run build && npm run add-build"
   },
   "keywords": [],
