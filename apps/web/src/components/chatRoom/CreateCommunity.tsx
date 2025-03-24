@@ -85,9 +85,7 @@ const CreateCommunity = () => {
     },
   });
 
-  const formData = new FormData();
-
-  const { mutate } = useApi("/communities", {
+  const { mutate, isLoading } = useApi("/communities", {
     method: "POST",
     onSuccess: (data) => {
       // console.log(data);
@@ -105,6 +103,7 @@ const CreateCommunity = () => {
 
   async function onSubmit(val: z.infer<typeof formSchema>) {
     try {
+      const formData = new FormData(); // Create formData inside the function
       formData.append("name", val.name);
       formData.append("description", val.description);
       if (val.image) {
@@ -113,6 +112,9 @@ const CreateCommunity = () => {
 
       await mutate({
         body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
       });
 
       router.push("/explore"); //change this after creating communitites page
@@ -201,11 +203,11 @@ const CreateCommunity = () => {
               variant={"gradient"}
               className="self-center py-6 px-5 shadow-lg shadow-primary-1"
             >
-              {/* {isLoading ? ( */}
-              {/* <FaSpinner className="animate-spin text-xl" />
-              ) : ( */}
-              Create
-              {/* )} */}
+              {isLoading ? (
+                <FaSpinner className="animate-spin text-xl" />
+              ) : (
+                "Create"
+              )}
             </Button>
           </form>
         </Form>

@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@repo/ui"],
   images: {
-    domains: ["picsum.photos"],
+    domains: ["picsum.photos", "res.cloudinary.com"],
   },
   async rewrites() {
     return [

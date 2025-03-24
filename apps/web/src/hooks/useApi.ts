@@ -3,9 +3,6 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_BASE_URL, 
-  headers: {
-    'Content-Type': 'application/json',
-  },
   withCredentials: true
 })
 
@@ -47,7 +44,7 @@ export function useApi<T>(
     try {
       setIsLoading(true)
       
-      const requestConfig = {
+      const requestConfig: any = {
         url: mutateOptions.url || url,
         method,
         headers: {
@@ -55,6 +52,12 @@ export function useApi<T>(
           ...mutateOptions.headers
         },
         data: mutateOptions.body || initialBody
+      }
+      
+      // Remove Content-Type header if FormData is being sent
+      // Axios will automatically set the correct content type with boundary
+      if (requestConfig.data instanceof FormData) {
+        delete requestConfig.headers['Content-Type'];
       }
       
       const response = await api.request(requestConfig)

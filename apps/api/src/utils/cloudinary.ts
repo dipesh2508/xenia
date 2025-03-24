@@ -12,7 +12,7 @@ const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
     folder: 'xenia-communities',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'gif'],
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
     transformation: [{ width: 500, height: 500, crop: 'limit' }],
   } as any
 });
@@ -24,23 +24,34 @@ const uploadMiddleware = multer({
   }
 });
 
-// Create an upload object with optional method
+// Create an upload object with optional method - fix the implementation
 export const upload = {
-  ...uploadMiddleware,
-  optional: () => ({
-    ...uploadMiddleware,
-    single: (fieldName: string) => (req: any, res: any, next: any) => {
-      if (!req.files && !req.file) {
-        return next();
+  single: (fieldName: string) => uploadMiddleware.single(fieldName),
+  optional: function() {
+    return {
+      single: (fieldName: string) => (req: any, res: any, next: any) => {
+        // If there's no file, bypass multer
+        if (!req.file && (!req.files || Object.keys(req.files).length === 0)) {
+          return next();
+        }
+        
+        // Use multer to handle the file upload
+        uploadMiddleware.single(fieldName)(req, res, (err: any) => {
+          if (err) {
+            console.error('Multer error:', err);
+            return res.status(400).json({ message: err.message });
+          }
+          next();
+        });
       }
-      return uploadMiddleware.single(fieldName)(req, res, next);
-    }
-  })
+    };
+  }
 };
 
 export const deleteImage = async (publicId: string) => {
   try {
     await cloudinary.uploader.destroy(publicId);
+    console.log(`Successfully deleted image: ${publicId}`);
   } catch (error) {
     console.error('Error deleting image from Cloudinary:', error);
   }

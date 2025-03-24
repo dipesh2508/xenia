@@ -4,7 +4,6 @@
   "main": "index.js",
   "private": true,
   "scripts": {
-    "build": "prisma generate",
     "migrate": "prisma migrate dev"
   },
   "dependencies": {

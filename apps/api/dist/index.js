@@ -345,7 +345,7 @@ var storage = new multerStorageCloudinary.CloudinaryStorage({
   cloudinary: cloudinary.v2,
   params: {
     folder: "xenia-communities",
-    allowed_formats: ["jpg", "jpeg", "png", "gif"],
+    allowed_formats: ["jpg", "jpeg", "png", "gif", "webp"],
     transformation: [{ width: 500, height: 500, crop: "limit" }]
   }
 });
@@ -357,20 +357,28 @@ var uploadMiddleware = multer__default.default({
   }
 });
 var upload = {
-  ...uploadMiddleware,
-  optional: () => ({
-    ...uploadMiddleware,
-    single: (fieldName) => (req, res, next) => {
-      if (!req.files && !req.file) {
-        return next();
+  single: (fieldName) => uploadMiddleware.single(fieldName),
+  optional: function() {
+    return {
+      single: (fieldName) => (req, res, next) => {
+        if (!req.file && (!req.files || Object.keys(req.files).length === 0)) {
+          return next();
+        }
+        uploadMiddleware.single(fieldName)(req, res, (err) => {
+          if (err) {
+            console.error("Multer error:", err);
+            return res.status(400).json({ message: err.message });
+          }
+          next();
+        });
       }
-      return uploadMiddleware.single(fieldName)(req, res, next);
-    }
-  })
+    };
+  }
 };
 var deleteImage = async (publicId) => {
   try {
     await cloudinary.v2.uploader.destroy(publicId);
+    console.log(`Successfully deleted image: ${publicId}`);
   } catch (error) {
     console.error("Error deleting image from Cloudinary:", error);
   }
@@ -801,11 +809,11 @@ var getUserCommunities = async (req, res) => {
 
 // src/routes/community.route.ts
 var router2 = express4__default.default.Router();
-router2.post("/", isLoggedIn, upload.optional().single("image"), createCommunity);
+router2.post("/", isLoggedIn, upload.single("image"), createCommunity);
 router2.get("/", getAllCommunities);
 router2.get("/user", isLoggedIn, getUserCommunities);
 router2.get("/:id", getCommunity);
-router2.put("/:id", isLoggedIn, upload.optional().single("image"), updateCommunity);
+router2.put("/:id", isLoggedIn, upload.single("image"), updateCommunity);
 router2.delete("/:id", isLoggedIn, deleteCommunity);
 router2.post("/:id/join", isLoggedIn, joinCommunity);
 router2.post("/:id/leave", isLoggedIn, leaveCommunity);
