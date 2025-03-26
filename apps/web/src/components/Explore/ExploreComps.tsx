@@ -74,7 +74,7 @@ const ExploreComps = () => {
   return (
     <>
       <ExploreSearch query={query} setQuery={setQuery} />
-      <div className="mx-24 grid lg:grid-cols-4 md:grid-cols-2 grid-cols-1 gap-6 h-full overflow-y-auto mb-8">
+      <div className="lg:mx-24 mx-2 grid lg:grid-cols-4 md:grid-cols-2 grid-cols-1 gap-6 h-full overflow-y-auto mb-8 pb-4">
         {/* {getData && getData.length > 0 ? 
         ( */}
         {(() => {
