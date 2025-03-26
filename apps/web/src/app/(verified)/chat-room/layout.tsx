@@ -1,5 +1,4 @@
 import CommunitySidebar from "@/components/chatRoom/CommunitySidebar";
-import { SidebarInset, SidebarProvider } from "@repo/ui/components/ui/sidebar";
 
 export default function ChatRoomLayout({
   children,
@@ -8,16 +7,12 @@ export default function ChatRoomLayout({
 }>) {
   return (
     <>
-      <SidebarProvider
-        style={
-          {
-            "--sidebar-width": "calc(400px)",
-          } as React.CSSProperties
-        }
-      >
-        <CommunitySidebar />
-        <SidebarInset>{children}</SidebarInset>
-      </SidebarProvider>
+      <div className="grid-cols-12 grid h-screen overflow-hidden">
+        <div className="col-span-3 h-full overflow-hidden">
+          <CommunitySidebar />
+        </div>
+        <div className="col-span-9 h-full overflow-hidden">{children}</div>
+      </div>
     </>
   );
 }
