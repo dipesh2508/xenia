@@ -37,7 +37,7 @@ const ExploreCard = ({ data }: { data: Community }) => {
 
   const fetchRandomImage = async () => {
     try {
-      const randomId = Math.floor(Math.random() * 500);
+      const randomId = Math.floor(Math.random() * 200);
       setRandomImage(`https://picsum.photos/id/${randomId}/350/200`);
     } catch (error) {
       console.error("Failed to fetch random image:", error);

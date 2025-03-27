@@ -1,28 +1,44 @@
-import {
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-} from "@repo/ui/components/ui/sidebar";
 import { Skeleton } from "@repo/ui/components/ui/skeleton";
 
 export default function SidebarSkeleton() {
   return (
-    <Sidebar className=" border-l rounded-tl-2xl rounded-bl-2xl flex-shrink-0 h-full max-h-[calc(100vh-32px)] bg-white ml-16 mt-4 px-2">
-      {/* Header Skeleton */}
-      <SidebarHeader className="flex flex-row items-center justify-between pb-4">
-        <Skeleton className="h-8 w-36" />
-        <Skeleton className="h-8 w-8 rounded-full" />
-      </SidebarHeader>
+    <div className="flex flex-col h-full border-l rounded-tl-2xl rounded-bl-2xl bg-white max-h-screen">
+      {/* Fixed Header Skeleton */}
+      <div className="border-b p-4 bg-white sticky top-0 z-20">
+        <div className="flex w-full items-center justify-between">
+          <Skeleton className="h-8 w-36" />
+          <Skeleton className="h-5 w-5 rounded-full" />
+        </div>
+        <div className="mt-3">
+          <Skeleton className="h-10 w-full rounded-md" />
+        </div>
+      </div>
 
-      {/* Search Bar Skeleton */}
-      <Skeleton className="h-10 w-full my-4" />
-
-      {/* List Items Skeleton */}
-      <SidebarContent className="flex flex-col gap-2 px-2">
-        {[...Array(5)].map((_, index) => (
-          <Skeleton key={index} className="h-12 w-full" />
-        ))}
-      </SidebarContent>
-    </Sidebar>
+      {/* Scrollable Content Skeleton */}
+      <div className="flex-1 overflow-y-auto p-1">
+        {Array(6)
+          .fill(0)
+          .map((_, index) => (
+            <div key={index} className="relative">
+              <div className="flex items-center px-3 py-3 w-full">
+                <Skeleton className="h-14 w-14 rounded-full flex-shrink-0" />
+                <div className="flex flex-col gap-2 p-4 pr-0 w-full">
+                  <div className="flex w-full items-center gap-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-4 w-12 ml-auto" />
+                  </div>
+                  <div className="flex w-full items-center justify-between">
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-5 w-5 rounded-full" />
+                  </div>
+                </div>
+              </div>
+              {index !== 5 && (
+                <div className="border-b border-gray-200 mx-auto w-11/12"></div>
+              )}
+            </div>
+          ))}
+      </div>
+    </div>
   );
 }

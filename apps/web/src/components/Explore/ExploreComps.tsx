@@ -6,6 +6,7 @@ import React, { useState } from "react";
 import LogoFull from "@/assets/logo-full-xenia-slate.svg";
 import Image from "next/image";
 import ExploreCard from "./ExploreCard";
+import ExploreSkeletonLoader from "./ExploreSkeletonLoader";
 
 interface Owner {
   id: string;
@@ -67,7 +68,7 @@ const ExploreComps = () => {
     },
   });
 
-  if (getLoading) return <p>Loading...</p>;
+  if (getLoading) return <ExploreSkeletonLoader />;
   if (getError) return <p>Error: {getError.message}</p>;
   if (getData === undefined || getData?.length === 0)
     return <NoCommunitiesFound />;

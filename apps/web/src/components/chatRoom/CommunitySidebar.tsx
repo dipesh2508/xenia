@@ -129,7 +129,11 @@ const CommunitySidebar = () => {
             <DropdownMenuTrigger className="focus:outline-none">
               <FaEllipsisVertical className="text-secondary-5" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="hover:bg-white">
+            <DropdownMenuContent
+              className="hover:bg-white"
+              align="end"
+              sideOffset={5}
+            >
               <Link href={"/create-community"}>
                 <DropdownMenuItem className="focus:bg-chatroom-accent/10 focus:text-zinc-700">
                   Create Community
@@ -144,14 +148,15 @@ const CommunitySidebar = () => {
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
+      <div className="flex-1 overflow-y-auto">
         {communities?.map((group, index) => (
-          <div key={index} className="border-b last:border-b-0">
+          <div key={index} className="relative last:after:border-b-0">
+            <div className="after:absolute after:bottom-0 after:left-1/2 after:w-11/12 after:transform after:-translate-x-1/2 after:border-b after:border-b-gray-300"></div>
             <Link
               href={`/chat-room/chats/${group.communityId}`}
-              className="flex items-center px-3 py-3 w-full hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              className="flex items-center px-3 py-0 w-full hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-14 w-14 rounded-full">
+              <Avatar className="h-14 w-14 rounded-full bg-slate-100">
                 <AvatarImage
                   src={group.community.image || "https://github.com/shadcn.png"}
                   alt="user image"
@@ -184,14 +189,19 @@ const CommunitySidebar = () => {
                         : "")}
                   </span>
                   <DropdownMenu>
-                    <DropdownMenuTrigger className="focus:outline-none">
-                      <FaEllipsisVertical className="text-foreground/30 flex-shrink-0 ml-2" />
+                    <DropdownMenuTrigger className="focus:outline-none w-8 h-8 flex items-center justify-center">
+                      <FaEllipsisVertical className="text-foreground/30 flex-shrink-0" />
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="hover:bg-white">
-                      <DropdownMenuItem className="focus:bg-chatroom-accent/10 focus:text-zinc-700">
+                    <DropdownMenuContent
+                      className="hover:bg-white text-base"
+                      align="end"
+                      sideOffset={5}
+                      avoidCollisions
+                    >
+                      <DropdownMenuItem className="focus:bg-chatroom-accent/10 focus:text-zinc-700 py-2">
                         Update Details
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="focus:bg-chatroom-accent/10 focus:text-zinc-700">
+                      <DropdownMenuItem className="focus:bg-chatroom-accent/10 focus:text-zinc-700 py-2">
                         Leave Community
                       </DropdownMenuItem>
                     </DropdownMenuContent>
