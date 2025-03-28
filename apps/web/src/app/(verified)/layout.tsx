@@ -21,7 +21,7 @@ export default function VerifiedLayout({
     },
   });
   return (
-    <div className="flex bg-secondary h-screen">
+    <div className="flex bg-secondary max-h-[calc(100vh-1px)] overflow-hidden">
       <SidebarProvider>
         <LeftSidePanel />
 

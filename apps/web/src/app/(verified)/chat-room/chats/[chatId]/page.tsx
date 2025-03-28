@@ -255,9 +255,9 @@ const Page = ({ params }: { params: { chatId: string } }) => {
   };
 
   return (
-    <div>
-      <div className="bg-chatroom-background rounded-tr-xl rounded-br-xl flex-1 h-screen max-h-[calc(100vh-32px)] flex flex-col">
-        <header className="sticky top-0 flex shrink-0 items-center gap-2 border-b bg-background px-3.5 py-2 justify-between">
+    <div className="h-full">
+      <div className="bg-chatroom-background rounded-tr-xl rounded-br-xl flex-1 h-full flex flex-col">
+        <header className="sticky top-0 flex shrink-0 items-center gap-2 border-b bg-background px-3.5 py-2 justify-between z-10">
           <div className="flex items-center justify-between">
             <Avatar className="h-11 w-11 rounded-full">
               <AvatarImage src={community?.image as string} alt="user image" />
