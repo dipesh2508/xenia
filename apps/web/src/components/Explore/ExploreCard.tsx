@@ -37,7 +37,7 @@ const ExploreCard = ({ data }: { data: Community }) => {
 
   const fetchRandomImage = async () => {
     try {
-      const randomId = Math.floor(Math.random() * 500);
+      const randomId = Math.floor(Math.random() * 200);
       setRandomImage(`https://picsum.photos/id/${randomId}/350/200`);
     } catch (error) {
       console.error("Failed to fetch random image:", error);
@@ -77,12 +77,12 @@ const ExploreCard = ({ data }: { data: Community }) => {
 
   if (joinLoading) return <SkeletonExploreCard />;
   return (
-    <Card className="rounded-3xl text-white text-center relative shadow-md shadow-primary-1/50">
+    <Card className="rounded-3xl text-white text-center relative shadow-md shadow-primary-1/50 h-96">
       <CardHeader className="p-0 relative">
         <Image
           src={randomImage}
           alt="Community Image"
-          className="rounded-tr-xl rounded-tl-xl"
+          className="rounded-tr-xl rounded-tl-xl aspect-[3/2]"
           width={350}
           height={200}
         />
@@ -99,13 +99,14 @@ const ExploreCard = ({ data }: { data: Community }) => {
             {data.name}
           </p>
         </div>
-      </CardHeader>
-      <div className="absolute left-4 top-36 flex flex-start gap-1">
-        <div className="rounded-full bg-primary-6 font-medium flex-shrink-0 size-10 flex justify-center items-center">
-          {data._count.members}
+        <div className="absolute left-4 top-[85%] flex flex-start gap-1">
+          <div className="rounded-full bg-primary-6 font-medium flex-shrink-0 size-10 flex justify-center items-center">
+            {data._count.members}
+          </div>
+          <p className="text-black text-left pt-5">member(s)</p>
         </div>
-        <p className="text-black text-left pt-5">member(s)</p>
-      </div>
+      </CardHeader>
+
       <CardContent className="flex justify-center items-start gap-3 mt-10">
         <div className="rounded-full bg-primary-6 p-2">
           <FaBars />

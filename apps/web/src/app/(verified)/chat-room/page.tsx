@@ -3,7 +3,7 @@ import LogoFull from "@/assets/logo-full-xenia-slate.svg";
 
 const page = () => {
   return (
-    <div className="mx-auto my-36">
+    <div className="flex items-center justify-center flex-col gap-4 h-full">
       <Image
         src={LogoFull}
         alt="No Communities Found"
