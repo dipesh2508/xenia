@@ -51,7 +51,7 @@ const SignIn = () => {
       toast.success(`Welcome back ${data.name}!`, {
         description: "Let's gooo!",
       });
-      router.push("/explore");
+      router.push("/chat-room");
     },
     onError: (error) => {
       toast.error(error.message);

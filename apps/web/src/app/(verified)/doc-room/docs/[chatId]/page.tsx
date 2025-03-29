@@ -253,7 +253,6 @@ const Page = ({ params }: { params: { chatId: string } }) => {
       // Error is already handled by the useApi hook
     }
   };
-
   return (
     <div className="h-full">
       <div className="bg-chatroom-background rounded-tr-xl rounded-br-xl flex-1 h-full flex flex-col">
@@ -333,7 +332,7 @@ const Page = ({ params }: { params: { chatId: string } }) => {
           onSendMessage={sendMessage}
           isConnected={isConnected}
           disabled={!community?.chats?.[0]?.id || isSendingMessage}
-          room="chatting"
+          room="docs"
         />
       </div>
     </div>

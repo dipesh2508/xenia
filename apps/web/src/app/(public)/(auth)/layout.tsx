@@ -15,7 +15,7 @@ export default function AuthLayout({
       toast.success("User Logged In", {
         description: "User is already logged in",
       });
-      router.push("/explore");
+      router.push("/chat-room");
     },
   });
   return (
