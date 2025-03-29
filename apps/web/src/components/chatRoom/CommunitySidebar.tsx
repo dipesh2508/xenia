@@ -118,11 +118,9 @@ const CommunitySidebar = () => {
       </div>
     );
   return (
-    <Sidebar
-      collapsible="none"
-      className=" border-l rounded-tl-2xl rounded-bl-2xl overflow-y-auto flex-shrink-0 h-full max-h-[calc(100vh-32px)] bg-white"
-    >
-      <SidebarHeader className="gap-3.5 border-b p-4 pt-12pt-5">
+    <div className="flex flex-col h-full border-l rounded-tl-2xl rounded-bl-2xl bg-white max-h-screen">
+      {/* Fixed Header */}
+      <div className="border-b p-4 bg-white sticky top-0 z-20">
         <div className="flex w-full items-center justify-between">
           <div className="text-2xl font-semibold text-primary-8/80">
             Communities
@@ -131,7 +129,11 @@ const CommunitySidebar = () => {
             <DropdownMenuTrigger className="focus:outline-none">
               <FaEllipsisVertical className="text-secondary-5" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="hover:bg-white">
+            <DropdownMenuContent
+              className="hover:bg-white"
+              align="end"
+              sideOffset={5}
+            >
               <Link href={"/create-community"}>
                 <DropdownMenuItem className="focus:bg-chatroom-accent/10 focus:text-zinc-700">
                   Create Community
@@ -140,61 +142,77 @@ const CommunitySidebar = () => {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <SearchForm />
-      </SidebarHeader>
-      <SidebarContent className="rounded-bl-xl">
-        <SidebarGroup className="px-1 rounded-bl-xl">
-          <SidebarGroupContent>
-            {communities?.map((group, index) => (
-              <div key={index}>
-                <Link
-                  href={`/chat-room/chats/${group.communityId}`}
-                  key={index}
-                  className="flex items-center justify-center hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                >
-                  <Avatar className="h-14 w-14 rounded-full">
-                    <AvatarImage
-                      src="https://github.com/shadcn.png"
-                      alt="user image"
-                    />
-                    <AvatarFallback className="rounded-lg">IA</AvatarFallback>
-                  </Avatar>
-                  <div className="flex flex-col items-start gap-2 whitespace-nowrap p-4 pr-0 text-sm leading-tight">
-                    <div className="flex w-full items-center gap-2">
-                      <span className="text-foreground font-medium">
-                        {group.community.name}
-                      </span>{" "}
-                      <span className="ml-auto text-xs">
-                        {formatMessageDate(
-                          group.community.chats[0]?.messages[0]?.createdAt || ""
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex w-full items-center justify-between">
-                      <span className="line-clamp-2 w-[260px] whitespace-break-spaces text-xs">
-                        {group.community.chats[0]?.messages[0]?.sender.name} -{" "}
-                        {(
-                          group.community.chats[0]?.messages[0]?.content ||
-                          "No messages yet"
-                        ).slice(0, 15) +
-                          ((
-                            group.community.chats[0]?.messages[0]?.content ||
-                            "No messages yet"
-                          ).length > 15
-                            ? "..."
-                            : "")}
-                      </span>
-                      <FaEllipsisVertical className="text-foreground/30" />
-                    </div>
-                  </div>
-                </Link>
-                <hr className="w-80 text-center h-0.5 bg-zinc-400 mx-auto" />
+        <div className="mt-3">
+          <SearchForm />
+        </div>
+      </div>
+
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto">
+        {communities?.map((group, index) => (
+          <div key={index} className="relative last:after:border-b-0">
+            <div className="after:absolute after:bottom-0 after:left-1/2 after:w-11/12 after:transform after:-translate-x-1/2 after:border-b after:border-b-gray-300"></div>
+            <Link
+              href={`/chat-room/chats/${group.communityId}`}
+              className="flex items-center px-3 py-0 w-full hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            >
+              <Avatar className="h-14 w-14 rounded-full bg-slate-100">
+                <AvatarImage
+                  src={group.community.image || "https://github.com/shadcn.png"}
+                  alt="user image"
+                />
+                <AvatarFallback className="rounded-lg">IA</AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col items-start gap-2 whitespace-nowrap p-4 pr-0 text-sm leading-tight w-full">
+                <div className="flex w-full items-center gap-2">
+                  <span className="text-foreground font-medium">
+                    {group.community.name}
+                  </span>
+                  <span className="ml-auto text-xs">
+                    {formatMessageDate(
+                      group.community.chats[0]?.messages[0]?.createdAt || ""
+                    )}
+                  </span>
+                </div>
+                <div className="flex w-full items-center justify-between">
+                  <span className="line-clamp-2 w-[220px] whitespace-break-spaces text-xs">
+                    {group.community.chats[0]?.messages[0]?.sender.name} -{" "}
+                    {(
+                      group.community.chats[0]?.messages[0]?.content ||
+                      "No messages yet"
+                    ).slice(0, 15) +
+                      ((
+                        group.community.chats[0]?.messages[0]?.content ||
+                        "No messages yet"
+                      ).length > 15
+                        ? "..."
+                        : "")}
+                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="focus:outline-none w-8 h-8 flex items-center justify-center">
+                      <FaEllipsisVertical className="text-foreground/30 flex-shrink-0" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className="hover:bg-white text-base"
+                      align="end"
+                      sideOffset={5}
+                      avoidCollisions
+                    >
+                      <DropdownMenuItem className="focus:bg-chatroom-accent/10 focus:text-zinc-700 py-2">
+                        Update Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="focus:bg-chatroom-accent/10 focus:text-zinc-700 py-2">
+                        Leave Community
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
-            ))}
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
+            </Link>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
 
