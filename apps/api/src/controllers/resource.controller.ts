@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "@/utils/prisma";
+import { getSocketIO } from "@/services/socket";
 
 export const createResource = async (req: any, res: Response): Promise<void> => {
   try {
@@ -47,6 +48,10 @@ export const createResource = async (req: any, res: Response): Promise<void> => 
         }
       }
     });
+
+    // Emit socket event for real-time updates
+    const io = getSocketIO();
+    io.to(`community:${communityId}`).emit('resource:create', resource);
 
     res.status(201).json(resource);
   } catch (error) {
@@ -162,12 +167,15 @@ export const updateResource = async (req: any, res: Response): Promise<void> => 
   try {
     const { id } = req.params;
     const { title } = req.body;
-    const content = req.file.path;
+    const content = req.file?.path;
     const userId = req.user.id;
 
     // Find the resource
     const resource = await prisma.resource.findUnique({
-      where: { id }
+      where: { id },
+      include: {
+        community: true
+      }
     });
 
     if (!resource) {
@@ -198,6 +206,10 @@ export const updateResource = async (req: any, res: Response): Promise<void> => 
         }
       }
     });
+
+    // Emit socket event for real-time updates
+    const io = getSocketIO();
+    io.to(`community:${resource.communityId}`).emit('resource:update', updatedResource);
 
     res.status(200).json(updatedResource);
   } catch (error) {
@@ -233,10 +245,16 @@ export const deleteResource = async (req: any, res: Response): Promise<void> => 
       return;
     }
 
+    const communityId = resource.communityId;
+
     // Delete the resource
     await prisma.resource.delete({
       where: { id }
     });
+
+    // Emit socket event for real-time updates
+    const io = getSocketIO();
+    io.to(`community:${communityId}`).emit('resource:delete', { id, communityId });
 
     res.status(200).json({ message: "Resource deleted successfully" });
   } catch (error) {

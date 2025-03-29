@@ -95,6 +95,18 @@ export const initSocketServer = (server: HttpServer): void => {
       console.log(`User ${(socket as any).user?.id} left room ${roomId}`);
     });
     
+    // Handle joining community rooms
+    socket.on("join:community", (communityId: string) => {
+      socket.join(`community:${communityId}`);
+      console.log(`Socket ${socket.id} joined community:${communityId}`);
+    });
+
+    // Handle leaving community rooms
+    socket.on("leave:community", (communityId: string) => {
+      socket.leave(`community:${communityId}`);
+      console.log(`Socket ${socket.id} left community:${communityId}`);
+    });
+
     // Handle disconnection
     socket.on('disconnect', () => {
       console.log(`User disconnected: ${(socket as any).user?.id}`);
@@ -108,6 +120,14 @@ export const initSocketServer = (server: HttpServer): void => {
 export const getIO = (): Server => {
   if (!io) {
     throw new Error('Socket.IO has not been initialized. Please call initSocketServer first.');
+  }
+  return io;
+};
+
+// Function to get the Socket.IO instance
+export const getSocketIO = (): Server => {
+  if (!io) {
+    throw new Error("Socket.IO has not been initialized. Please call initSocketServer first.");
   }
   return io;
 };
