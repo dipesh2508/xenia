@@ -6,6 +6,8 @@ import { SendHorizontal, FilePlus2, X } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { cn } from "@repo/ui/lib/utils";
+import { div } from "motion/react-client";
+import { Input } from "@repo/ui/components/ui/input";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_FILE_TYPES = [
@@ -55,7 +57,9 @@ const SendMessage = ({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>
+  ) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -117,35 +121,45 @@ const SendMessage = ({
         )}
 
         <div className="flex items-center gap-3 p-2 rounded-2xl shadow-sm">
-          <Textarea
-            placeholder="Write a message..."
-            className="min-h-12 max-h-32 resize-none bg-secondary-0 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-3 py-2.5 text-sm"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={disabled}
-          />
+          {room === "docs" ? (
+            <div className="flex items-center gap-2 w-full">
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={handleFileChange}
+                accept={ACCEPTED_FILE_TYPES.join(",")}
+              />
 
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            onChange={handleFileChange}
-            accept={ACCEPTED_FILE_TYPES.join(",")}
-          />
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-10 w-10 hover:bg-chatroom-accent/20 transition-all duration-200 rounded-full"
+                onClick={triggerFileUpload}
+                // disabled={disabled}
+              >
+                <FilePlus2 className="text-indigo-950 text-sm" />
+              </Button>
 
-          {/* File upload button - explicitly show it for docs room and hide for others */}
-          {/* {room === "docs" && ( */}
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-10 w-10 hover:bg-chatroom-accent/20 transition-all duration-200 rounded-full"
-            onClick={triggerFileUpload}
-            disabled={disabled}
-          >
-            <FilePlus2 className="text-indigo-950 text-sm" />
-          </Button>
-          {/* )} */}
+              <Input
+                placeholder="Write a message..."
+                className="min-h-12 max-h-32 resize-none bg-secondary-0 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-3 py-2.5 text-sm"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={disabled}
+              />
+            </div>
+          ) : (
+            <Textarea
+              placeholder="Write a message..."
+              className="min-h-12 max-h-32 resize-none bg-secondary-0 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-3 py-2.5 text-sm"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={disabled}
+            />
+          )}
 
           <Button
             size="icon"

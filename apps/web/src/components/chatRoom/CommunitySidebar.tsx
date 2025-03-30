@@ -69,8 +69,10 @@ type Communities = {
   community: Community;
 }[];
 
-const CommunitySidebar = () => {
-  const router = useRouter();
+const CommunitySidebar = ({ roomType }: { roomType: string }) => {
+  console.log("Room Type: ", roomType);
+
+  const roomPath = roomType === "chats" ? "/chat-room/chats" : "/doc-room/docs";
   const {
     data: communities,
     error: getError,
@@ -153,7 +155,7 @@ const CommunitySidebar = () => {
           <div key={index} className="relative last:after:border-b-0">
             <div className="after:absolute after:bottom-0 after:left-1/2 after:w-11/12 after:transform after:-translate-x-1/2 after:border-b after:border-b-gray-300"></div>
             <Link
-              href={`/chat-room/chats/${group.communityId}`}
+              href={`${roomPath}/${group.communityId}`}
               className="flex items-center px-3 py-0 w-full hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
               <Avatar className="h-14 w-14 rounded-full bg-slate-100">

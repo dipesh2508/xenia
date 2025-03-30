@@ -3,7 +3,7 @@
 var dotenv = require('dotenv');
 var path = require('path');
 var http = require('http');
-var express4 = require('express');
+var express5 = require('express');
 var cookieParser = require('cookie-parser');
 var cors = require('cors');
 var client = require('@prisma/client');
@@ -19,7 +19,7 @@ function _interopDefault (e) { return e && e.__esModule ? e : { default: e }; }
 var dotenv__default = /*#__PURE__*/_interopDefault(dotenv);
 var path__default = /*#__PURE__*/_interopDefault(path);
 var http__default = /*#__PURE__*/_interopDefault(http);
-var express4__default = /*#__PURE__*/_interopDefault(express4);
+var express5__default = /*#__PURE__*/_interopDefault(express5);
 var cookieParser__default = /*#__PURE__*/_interopDefault(cookieParser);
 var cors__default = /*#__PURE__*/_interopDefault(cors);
 var bcrypt__default = /*#__PURE__*/_interopDefault(bcrypt);
@@ -329,7 +329,7 @@ var isLoggedIn = async (req, res, next) => {
 };
 
 // src/routes/user.route.ts
-var router = express4__default.default.Router();
+var router = express5__default.default.Router();
 router.route("/signup").post(userSignup);
 router.route("/login").post(userLogin);
 router.route("/logout").post(logout);
@@ -808,7 +808,7 @@ var getUserCommunities = async (req, res) => {
 };
 
 // src/routes/community.route.ts
-var router2 = express4__default.default.Router();
+var router2 = express5__default.default.Router();
 router2.post("/", isLoggedIn, upload.single("image"), createCommunity);
 router2.get("/", getAllCommunities);
 router2.get("/user", isLoggedIn, getUserCommunities);
@@ -1044,11 +1044,25 @@ var initSocketServer = (server2) => {
       socket.leave(roomId);
       console.log(`User ${socket.user?.id} left room ${roomId}`);
     });
+    socket.on("join:community", (communityId) => {
+      socket.join(`community:${communityId}`);
+      console.log(`Socket ${socket.id} joined community:${communityId}`);
+    });
+    socket.on("leave:community", (communityId) => {
+      socket.leave(`community:${communityId}`);
+      console.log(`Socket ${socket.id} left community:${communityId}`);
+    });
     socket.on("disconnect", () => {
       console.log(`User disconnected: ${socket.user?.id}`);
     });
   });
   console.log("Socket.IO server initialized successfully");
+};
+var getSocketIO = () => {
+  if (!io) {
+    throw new Error("Socket.IO has not been initialized. Please call initSocketServer first.");
+  }
+  return io;
 };
 
 // src/controllers/message.controller.ts
@@ -1221,7 +1235,7 @@ var deleteMessage = async (req, res) => {
 };
 
 // src/routes/chat.route.ts
-var router3 = express4__default.default.Router();
+var router3 = express5__default.default.Router();
 router3.post("/", isLoggedIn, createChat);
 router3.get("/community/:communityId", isLoggedIn, getCommunityChats);
 router3.get("/:chatId", isLoggedIn, getChatById);
@@ -1231,9 +1245,265 @@ router3.get("/:chatId/messages", isLoggedIn, getMessagesByChat);
 router3.patch("/messages/:id", isLoggedIn, updateMessage);
 router3.delete("/messages/:id", isLoggedIn, deleteMessage);
 var chat_route_default = router3;
+
+// src/controllers/resource.controller.ts
+var createResource = async (req, res) => {
+  try {
+    const { title, communityId } = req.body;
+    const userId = req.user.id;
+    if (!title || !communityId) {
+      res.status(400).json({ message: "Title and community ID are required" });
+      return;
+    }
+    const community = await prisma.community.findUnique({
+      where: { id: communityId },
+      include: { members: true }
+    });
+    if (!community) {
+      res.status(404).json({ message: "Community not found" });
+      return;
+    }
+    const isMember = community.members.some((member) => member.userId === userId);
+    if (!isMember) {
+      res.status(403).json({ message: "You are not a member of this community" });
+      return;
+    }
+    const resource = await prisma.resource.create({
+      data: {
+        title,
+        ...req.file?.path && { content: req.file.path },
+        ownerId: userId,
+        communityId
+      },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            image: true
+          }
+        }
+      }
+    });
+    const io2 = getSocketIO();
+    io2.to(`community:${communityId}`).emit("resource:create", resource);
+    res.status(201).json(resource);
+  } catch (error) {
+    console.error("Create Resource Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+var getResource = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const resource = await prisma.resource.findUnique({
+      where: { id },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            image: true
+          }
+        },
+        community: {
+          include: {
+            members: true
+          }
+        }
+      }
+    });
+    if (!resource) {
+      res.status(404).json({ message: "Resource not found" });
+      return;
+    }
+    const isMember = resource.community.members.some((member) => member.userId === userId);
+    if (!isMember) {
+      res.status(403).json({ message: "You are not authorized to view this resource" });
+      return;
+    }
+    res.status(200).json(resource);
+  } catch (error) {
+    console.error("Get Resource Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+var getCommunityResources = async (req, res) => {
+  try {
+    const { communityId } = req.params;
+    const userId = req.user.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    const community = await prisma.community.findUnique({
+      where: { id: communityId },
+      include: { members: true }
+    });
+    if (!community) {
+      res.status(404).json({ message: "Community not found" });
+      return;
+    }
+    const isMember = community.members.some((member) => member.userId === userId);
+    if (!isMember) {
+      res.status(403).json({ message: "You are not a member of this community" });
+      return;
+    }
+    const total = await prisma.resource.count({
+      where: { communityId }
+    });
+    const resources = await prisma.resource.findMany({
+      where: { communityId },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            image: true
+          }
+        }
+      }
+    });
+    res.status(200).json({
+      resources,
+      total,
+      hasMore: total > skip + limit,
+      page,
+      limit
+    });
+  } catch (error) {
+    console.error("Get Community Resources Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+var updateResource = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title } = req.body;
+    const content = req.file?.path;
+    const userId = req.user.id;
+    const resource = await prisma.resource.findUnique({
+      where: { id },
+      include: {
+        community: true
+      }
+    });
+    if (!resource) {
+      res.status(404).json({ message: "Resource not found" });
+      return;
+    }
+    if (resource.ownerId !== userId) {
+      res.status(403).json({ message: "You can only update your own resources" });
+      return;
+    }
+    const updatedResource = await prisma.resource.update({
+      where: { id },
+      data: {
+        ...title && { title },
+        ...content && { content }
+      },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            image: true
+          }
+        }
+      }
+    });
+    const io2 = getSocketIO();
+    io2.to(`community:${resource.communityId}`).emit("resource:update", updatedResource);
+    res.status(200).json(updatedResource);
+  } catch (error) {
+    console.error("Update Resource Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+var deleteResource = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const resource = await prisma.resource.findUnique({
+      where: { id },
+      include: { community: true }
+    });
+    if (!resource) {
+      res.status(404).json({ message: "Resource not found" });
+      return;
+    }
+    const isOwner = resource.ownerId === userId;
+    const isCommunityOwner = resource.community.ownerId === userId;
+    if (!isOwner && !isCommunityOwner) {
+      res.status(403).json({
+        message: "You must be the resource owner or community owner to delete this resource"
+      });
+      return;
+    }
+    const communityId = resource.communityId;
+    await prisma.resource.delete({
+      where: { id }
+    });
+    const io2 = getSocketIO();
+    io2.to(`community:${communityId}`).emit("resource:delete", { id, communityId });
+    res.status(200).json({ message: "Resource deleted successfully" });
+  } catch (error) {
+    console.error("Delete Resource Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+var getUserResources = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    const total = await prisma.resource.count({
+      where: { ownerId: userId }
+    });
+    const resources = await prisma.resource.findMany({
+      where: { ownerId: userId },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+      include: {
+        community: {
+          select: {
+            id: true,
+            name: true,
+            image: true
+          }
+        }
+      }
+    });
+    res.status(200).json({
+      resources,
+      total,
+      hasMore: total > skip + limit,
+      page,
+      limit
+    });
+  } catch (error) {
+    console.error("Get User Resources Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// src/routes/resource.route.ts
+var router4 = express5__default.default.Router();
+router4.post("/", isLoggedIn, upload.single("file"), createResource);
+router4.get("/:id", isLoggedIn, getResource);
+router4.get("/community/:communityId", isLoggedIn, getCommunityResources);
+router4.get("/user/me", isLoggedIn, getUserResources);
+router4.put("/:id", isLoggedIn, upload.single("file"), updateResource);
+router4.delete("/:id", isLoggedIn, deleteResource);
+var resource_route_default = router4;
 dotenv__default.default.config({ path: path__default.default.resolve(process.cwd(), ".env") });
-var app = express4__default.default();
-app.use(express4__default.default.json());
+var app = express5__default.default();
+app.use(express5__default.default.json());
 app.use(cookieParser__default.default());
 app.use(cors__default.default({
   origin: process.env.NODE_ENV === "development" ? "http://localhost:3000" : process.env.FRONTEND_URL,
@@ -1245,6 +1515,7 @@ app.get("/", (_, res) => {
 app.use("/api/user", user_route_default);
 app.use("/api/communities", community_route_default);
 app.use("/api/chats", chat_route_default);
+app.use("/api/resources", resource_route_default);
 app.use((err, req, res, next) => {
   console.error("Server Error:", err);
   res.status(500).json({

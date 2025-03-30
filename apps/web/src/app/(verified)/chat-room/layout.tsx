@@ -9,7 +9,7 @@ export default function ChatRoomLayout({
     <>
       <div className="grid-cols-12 grid h-screen overflow-hidden">
         <div className="col-span-3 h-full overflow-hidden">
-          <CommunitySidebar />
+          <CommunitySidebar roomType="chats" />
         </div>
         <div className="col-span-9 h-full overflow-hidden">{children}</div>
       </div>

@@ -56,6 +56,27 @@ interface Chat {
   };
 }
 
+interface Resource {
+  id: string;
+  title: string;
+  content: string;
+  communityId: string;
+  ownerId: string;
+  createdAt: string;
+  updatedAt: string;
+  isPublished: boolean;
+  status: string;
+  type: string;
+  community: Community;
+  owner: User;
+  messages?: Message[];
+  _count: {
+    messages: number;
+    comments?: number;
+    likes?: number;
+  };
+}
+
 interface Community {
   id: string;
   name: string;
@@ -66,9 +87,10 @@ interface Community {
   createdAt: string;
   updatedAt: string;
   chats: Chat[];
+  resources: Resource[];
 }
 
-const Page = ({ params }: { params: { chatId: string } }) => {
+const Page = ({ params }: { params: { resourceId: string } }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -77,13 +99,13 @@ const Page = ({ params }: { params: { chatId: string } }) => {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useUserDetails();
-  const { chatId } = params;
+  const { resourceId } = params;
   const [isNewMessage, setIsNewMessage] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Add a separate useApi hook for fetching older messages
   const { mutate: fetchOlderMessagesApi } = useApi(
-    `/chats/${chatId}/messages`,
+    `/resources/community/${resourceId}`,
     {
       method: "GET",
       enabled: false,
@@ -97,7 +119,7 @@ const Page = ({ params }: { params: { chatId: string } }) => {
     try {
       const nextPage = currentPage + 1;
       const response = (await fetchOlderMessagesApi({
-        url: `/chats/${community.chats[0].id}/messages?page=${nextPage}&limit=20`,
+        url: `/docs/resources/community/${community.chats[0].id}?page=${nextPage}&limit=20`,
       })) as MessageResponse;
 
       setIsNewMessage(false); // Indicate these are old messages
@@ -114,13 +136,13 @@ const Page = ({ params }: { params: { chatId: string } }) => {
   };
 
   const { data: community, isLoading: getLoading } = useApi<Community>(
-    `/communities/${chatId}`,
+    `/resources/community/${resourceId}`,
     {
       method: "GET",
       onSuccess: (data) => {
-        console.log(data);
-        toast.success("Community loaded", {
-          description: `Let's chat in ${data.name}`,
+        console.log("community resources: ", data);
+        toast.success("Resource loaded", {
+          description: `Let's explore ${data.name}`,
         });
 
         // Use the messages already included in the community response
@@ -138,7 +160,7 @@ const Page = ({ params }: { params: { chatId: string } }) => {
         }
       },
       onError: (error) => {
-        toast.error("Community not fetched successfully", {
+        toast.error("Resource not found", {
           description: error.message,
         });
       },
@@ -146,7 +168,7 @@ const Page = ({ params }: { params: { chatId: string } }) => {
   );
 
   const { mutate: sendMessageMutation, isLoading: isSendingMessage } = useApi(
-    "/chats/messages",
+    "/resources",
     {
       method: "POST",
       onError: (error) => {
@@ -261,7 +283,7 @@ const Page = ({ params }: { params: { chatId: string } }) => {
             <Avatar className="h-11 w-11 rounded-full">
               <AvatarImage src={community?.image as string} alt="user image" />
               <AvatarFallback className="rounded-lg">
-                {community?.name.slice(0, 1).toUpperCase()}
+                {/* {community?.name.slice(0, 1).toUpperCase()} */}
               </AvatarFallback>
             </Avatar>
 
