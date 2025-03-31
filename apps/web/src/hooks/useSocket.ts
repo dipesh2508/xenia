@@ -226,7 +226,7 @@ export const useSocket = ({
         withCredentials: true,
         transports: ["websocket"],
         reconnection: true,
-        reconnectionAttempts: 2,
+        reconnectionAttempts: maxRetries,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 3000,
         timeout: 30000,
