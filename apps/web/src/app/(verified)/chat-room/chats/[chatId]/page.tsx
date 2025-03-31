@@ -16,6 +16,26 @@ import { io, Socket } from "socket.io-client";
 import { useUserDetails } from "@/hooks/useUserDetails";
 import { Button } from "@repo/ui/components/ui/button";
 
+// Helper function to get the proper socket base URL
+const getSocketBaseUrl = () => {
+  // For socket connections, we need to strip the /api path
+  // The NEXT_PUBLIC_BASE_URL is configured with /api for regular API calls
+  const apiBaseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000/api";
+  
+  // For development, extract the host without the /api path
+  if (process.env.NODE_ENV === 'development') {
+    // Match something like http://localhost:8000/api and extract the base part
+    const match = apiBaseUrl.match(/(https?:\/\/[^\/]+)/);
+    if (match && match[1]) {
+      return match[1]; // Return just the host portion (e.g., http://localhost:8000)
+    }
+    return "http://localhost:8000"; // Fallback
+  } else {
+    // In production, use the origin for sockets (the rewrite rule handles routing)
+    return window.location.origin;
+  }
+};
+
 interface Message {
   id: string;
   content: string;
@@ -161,66 +181,107 @@ const Page = ({ params }: { params: { chatId: string } }) => {
   useEffect(() => {
     if (community?.chats && community.chats.length > 0) {
       const chatId = community.chats[0]?.id;
+      let socketInstance: Socket | null = null;
+      let retryCount = 0;
+      const MAX_RETRIES = 3;
 
-      // Initialize socket connection with proper configuration
-      const socketInstance = io(
-        process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000",
-        {
+      const connectSocket = () => {
+        console.log("Attempting to connect to socket server...", retryCount);
+
+        // Get the base URL for the socket connection
+        const socketBaseUrl = getSocketBaseUrl();
+
+        // Initialize socket connection with proper configuration
+        socketInstance = io(socketBaseUrl, {
           withCredentials: true,
           transports: ["websocket", "polling"], // Try WebSocket first, fallback to polling
           reconnectionAttempts: 5, // Try to reconnect 5 times
           reconnectionDelay: 1000, // Start with 1 second delay
           reconnectionDelayMax: 5000, // Maximum 5 seconds delay
           timeout: 20000, // Connection timeout
-        }
-      );
-
-      socketInstance.on("connect", () => {
-        console.log("Socket connected with ID:", socketInstance.id);
-        setIsConnected(true);
-
-        // Join the chat room once connected
-        socketInstance.emit("joinRoom", chatId);
-      });
-
-      socketInstance.on("connect_error", (error) => {
-        console.error("Socket connection error:", error);
-        toast.error("Socket connection error", {
-          description: "Trying to reconnect...",
+          path: '/socket.io/', // Ensure path matches server and rewrite rule in next.config.js
+          forceNew: true, // Force a new connection
         });
-      });
 
-      socketInstance.on("disconnect", () => {
-        console.log("Socket disconnected");
-        setIsConnected(false);
-      });
+        socketInstance.on("connect", () => {
+          console.log("Socket connected with ID:", socketInstance?.id);
+          setIsConnected(true);
+          retryCount = 0;
 
-      socketInstance.on("newMessage", (message: Message) => {
-        setIsNewMessage(true); // Indicate this is a new message
-        setMessages((prev) => [...prev, message]);
-      });
+          // Join the chat room once connected
+          socketInstance?.emit("joinRoom", chatId);
+        });
 
-      socketInstance.on("messageUpdated", (updatedMessage: Message) => {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === updatedMessage.id ? updatedMessage : msg
-          )
-        );
-      });
+        socketInstance.on("connect_error", (error) => {
+          console.error("Socket connection error:", error);
+          console.log("Socket connection state:", socketInstance?.connected);
+          
+          if (retryCount < MAX_RETRIES) {
+            retryCount++;
+            console.log(`Retry attempt ${retryCount}/${MAX_RETRIES}...`);
+            
+            // Disconnect the old socket before creating a new one
+            if (socketInstance) {
+              socketInstance.disconnect();
+            }
+            
+            // Retry with a delay
+            setTimeout(connectSocket, 2000 * retryCount);
+          } else {
+            toast.error("Socket connection failed after multiple attempts", {
+              description: `Error: ${error.message}. Please refresh the page or try again later.`,
+            });
+          }
+        });
 
-      socketInstance.on("messageDeleted", ({ id }: { id: string }) => {
-        setMessages((prev) => prev.filter((msg) => msg.id !== id));
-      });
+        socketInstance.on("error", (error) => {
+          console.error("Socket error event:", error);
+        });
 
+        socketInstance.on("disconnect", (reason) => {
+          console.log("Socket disconnected. Reason:", reason);
+          setIsConnected(false);
+          
+          // Handle disconnect reasons that require reconnection
+          if (reason === "io server disconnect" || reason === "transport close") {
+            console.log("Server disconnected the socket. Attempting to reconnect...");
+            setTimeout(connectSocket, 2000);
+          }
+        });
+
+        socketInstance.on("newMessage", (message: Message) => {
+          setIsNewMessage(true); // Indicate this is a new message
+          setMessages((prev) => [...prev, message]);
+        });
+
+        socketInstance.on("messageUpdated", (updatedMessage: Message) => {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === updatedMessage.id ? updatedMessage : msg
+            )
+          );
+        });
+
+        socketInstance.on("messageDeleted", ({ id }: { id: string }) => {
+          setMessages((prev) => prev.filter((msg) => msg.id !== id));
+        });
+      };
+
+      // Start the socket connection process
+      connectSocket();
+
+      // Set socket in state
       setSocket(socketInstance);
 
       // Cleanup function
       return () => {
-        if (socketInstance.connected) {
+        if (socketInstance?.connected) {
           socketInstance.emit("leaveRoom", chatId);
           socketInstance.disconnect();
         }
-        socketInstance.off();
+        if (socketInstance) {
+          socketInstance.off();
+        }
       };
     }
   }, [community]);
@@ -340,3 +401,5 @@ const Page = ({ params }: { params: { chatId: string } }) => {
 };
 
 export default Page;
+
+
