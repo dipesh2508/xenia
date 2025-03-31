@@ -34,13 +34,6 @@ const SendMessage = ({
   return (
     <div className="sticky bg-chatroom-background px-4 pt-2 border-t border-gray-200 dark:border-gray-800">
       <div className="relative">
-        {!isConnected && (
-          <div className="absolute -top-8 left-0 right-0 text-center">
-            <span className="text-xs bg-red-500 text-white px-4 py-1.5 rounded-full shadow-md animate-pulse">
-              Disconnected - Reconnecting...
-            </span>
-          </div>
-        )}
         <div className="flex items-center gap-3 p-2 rounded-2xl shadow-sm">
           <Textarea
             placeholder="Write a message..."
@@ -48,13 +41,13 @@ const SendMessage = ({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={disabled}
+            disabled={disabled || !isConnected}
           />
           <Button
             size="icon"
             className="rounded-full h-10 w-10 bg-chatroom-accent hover:bg-chatroom-accent/90 transition-all duration-200 flex-shrink-0 shadow-sm hover:shadow-md"
             onClick={handleSend}
-            disabled={!message.trim() || disabled}
+            disabled={!message.trim() || disabled || !isConnected}
           >
             <SendHorizontal className="h-5 w-5" />
           </Button>
