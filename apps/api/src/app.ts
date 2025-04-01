@@ -5,6 +5,7 @@ import userRouter from "@/routes/user.route";
 import communityRouter from "@/routes/community.route";
 import chatRouter from "@/routes/chat.route";
 import resourceRouter from "@/routes/resource.route";
+import canvasRouter from '@/routes/canvas.route'
 import path from "path";
 import dotenv from "dotenv";
 
@@ -32,6 +33,7 @@ app.use("/api/user", userRouter);
 app.use("/api/communities", communityRouter);
 app.use("/api/chats", chatRouter);
 app.use("/api/resources", resourceRouter);
+app.use("/api/canvas", canvasRouter);
 
 // Error handler middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

@@ -91,6 +91,10 @@ export const initSocketServer = (server: HttpServer): void => {
   // Apply authentication middleware
   io.use(authenticateSocket);
 
+  // Keep track of active users in each canvas room
+  const canvasActiveUsers = new Map<string, Set<string>>();
+  const userDataCache = new Map<string, any>();
+
   io.on('connection', (socket: Socket) => {
     console.log(`User connected: ${(socket as any).user?.id}`);
     
@@ -118,9 +122,110 @@ export const initSocketServer = (server: HttpServer): void => {
       console.log(`Socket ${socket.id} left community:${communityId}`);
     });
 
+    // Canvas events
+    // User joins canvas
+    socket.on("canvas:join", ({ roomId, user }) => {
+      socket.join(roomId);
+      console.log(`User ${user.id} joined canvas room ${roomId}`);
+      
+      // Store user data in cache
+      userDataCache.set(user.id, user);
+      
+      // Add user to active users for this room
+      if (!canvasActiveUsers.has(roomId)) {
+        canvasActiveUsers.set(roomId, new Set());
+      }
+      canvasActiveUsers.get(roomId)?.add(user.id);
+      
+      // Broadcast to all clients in the room that a new user joined
+      io.to(roomId).emit("canvas:userJoined", user);
+      
+      // Log active users in this room
+      console.log(`Active users in ${roomId}:`, 
+        Array.from(canvasActiveUsers.get(roomId) || []).length);
+    });
+    
+    // User leaves canvas
+    socket.on("canvas:leave", ({ roomId, userId }) => {
+      socket.leave(roomId);
+      console.log(`User ${userId} left canvas room ${roomId}`);
+      
+      // Remove user from active users for this room
+      canvasActiveUsers.get(roomId)?.delete(userId);
+      
+      // If room is empty, remove it from the map
+      if (canvasActiveUsers.get(roomId)?.size === 0) {
+        canvasActiveUsers.delete(roomId);
+      }
+      
+      // Broadcast to all clients in the room that a user left
+      io.to(roomId).emit("canvas:userLeft", userId);
+    });
+    
+    // Handle request for active users in a room
+    socket.on("canvas:requestActiveUsers", ({ roomId }) => {
+      if (canvasActiveUsers.has(roomId)) {
+        const activeUserIds = Array.from(canvasActiveUsers.get(roomId) || []);
+        const activeUsersData = activeUserIds
+          .map(id => userDataCache.get(id))
+          .filter(Boolean);
+        
+        // Send the active users data to the requesting client
+        socket.emit("canvas:activeUsers", activeUsersData);
+      }
+    });
+    
+    // User mouse movement
+    socket.on("canvas:userMovement", ({ roomId, userId, position }) => {
+      // Broadcast the user's cursor position to other users in the room
+      socket.to(roomId).emit("canvas:userMovement", { userId, position });
+    });
+    
+    // Drawing events
+    socket.on("canvas:draw", (drawingData) => {
+      const { roomId, ...rest } = drawingData;
+      
+      // Log drawing events for debugging
+      console.log(`Drawing event from ${(socket as any).user?.id} in ${roomId}:`, rest.type);
+      
+      try {
+        // Ensure reliable delivery by broadcasting to all clients in the room
+        io.to(roomId).emit("canvas:draw", rest);
+      } catch (error) {
+        console.error("Error broadcasting drawing event:", error);
+      }
+    });
+    
+    // Request for canvas sync (when a user joins late)
+    socket.on("canvas:requestSync", ({ roomId }) => {
+      // Broadcast a request for the current canvas state
+      socket.to(roomId).emit("canvas:requestSync", { userId: (socket as any).user?.id });
+    });
+    
+    // Provide canvas sync
+    socket.on("canvas:provideSync", ({ roomId, canvasData }) => {
+      // Forward the canvas data to all users in the room
+      io.to(roomId).emit("canvas:sync", canvasData);
+    });
+
     // Handle disconnection
     socket.on('disconnect', () => {
-      console.log(`User disconnected: ${(socket as any).user?.id}`);
+      const userId = (socket as any).user?.id;
+      console.log(`User disconnected: ${userId}`);
+      
+      // Remove user from all canvas rooms they were in
+      canvasActiveUsers.forEach((users, roomId) => {
+        if (users.has(userId)) {
+          users.delete(userId);
+          if (users.size === 0) {
+            canvasActiveUsers.delete(roomId);
+          }
+          io.to(roomId).emit("canvas:userLeft", userId);
+        }
+      });
+      
+      // Clear user data from cache
+      userDataCache.delete(userId);
     });
   });
 

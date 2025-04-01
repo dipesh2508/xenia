@@ -3,7 +3,7 @@
 var dotenv = require('dotenv');
 var path = require('path');
 var http = require('http');
-var express5 = require('express');
+var express6 = require('express');
 var cookieParser = require('cookie-parser');
 var cors = require('cors');
 var client = require('@prisma/client');
@@ -19,7 +19,7 @@ function _interopDefault (e) { return e && e.__esModule ? e : { default: e }; }
 var dotenv__default = /*#__PURE__*/_interopDefault(dotenv);
 var path__default = /*#__PURE__*/_interopDefault(path);
 var http__default = /*#__PURE__*/_interopDefault(http);
-var express5__default = /*#__PURE__*/_interopDefault(express5);
+var express6__default = /*#__PURE__*/_interopDefault(express6);
 var cookieParser__default = /*#__PURE__*/_interopDefault(cookieParser);
 var cors__default = /*#__PURE__*/_interopDefault(cors);
 var bcrypt__default = /*#__PURE__*/_interopDefault(bcrypt);
@@ -329,7 +329,7 @@ var isLoggedIn = async (req, res, next) => {
 };
 
 // src/routes/user.route.ts
-var router = express5__default.default.Router();
+var router = express6__default.default.Router();
 router.route("/signup").post(userSignup);
 router.route("/login").post(userLogin);
 router.route("/logout").post(logout);
@@ -808,7 +808,7 @@ var getUserCommunities = async (req, res) => {
 };
 
 // src/routes/community.route.ts
-var router2 = express5__default.default.Router();
+var router2 = express6__default.default.Router();
 router2.post("/", isLoggedIn, upload.single("image"), createCommunity);
 router2.get("/", getAllCommunities);
 router2.get("/user", isLoggedIn, getUserCommunities);
@@ -1041,15 +1041,30 @@ var initSocketServer = (server2) => {
     process.env.NODE_ENV === "development" ? "http://localhost:3000" : process.env.FRONTEND_URL || "https://xenia-web.vercel.app"
   );
   io.use(authenticateSocket);
+  const canvasActiveUsers = /* @__PURE__ */ new Map();
+  const userSockets = /* @__PURE__ */ new Map();
+  const socketRooms = /* @__PURE__ */ new Map();
   io.on("connection", (socket) => {
-    console.log(`User connected: ${socket.user?.id}`);
+    const userId = socket.user?.id;
+    console.log(`User connected: ${userId}`);
+    if (userId) {
+      if (!userSockets.has(userId)) {
+        userSockets.set(userId, /* @__PURE__ */ new Set());
+      }
+      userSockets.get(userId)?.add(socket.id);
+    }
     socket.on("joinRoom", (roomId) => {
       socket.join(roomId);
-      console.log(`User ${socket.user?.id} joined room ${roomId}`);
+      if (!socketRooms.has(socket.id)) {
+        socketRooms.set(socket.id, /* @__PURE__ */ new Set());
+      }
+      socketRooms.get(socket.id)?.add(roomId);
+      console.log(`User ${userId} joined room ${roomId}`);
     });
     socket.on("leaveRoom", (roomId) => {
       socket.leave(roomId);
-      console.log(`User ${socket.user?.id} left room ${roomId}`);
+      socketRooms.get(socket.id)?.delete(roomId);
+      console.log(`User ${userId} left room ${roomId}`);
     });
     socket.on("join:community", (communityId) => {
       socket.join(`community:${communityId}`);
@@ -1059,11 +1074,117 @@ var initSocketServer = (server2) => {
       socket.leave(`community:${communityId}`);
       console.log(`Socket ${socket.id} left community:${communityId}`);
     });
+    socket.on("canvas:join", ({ roomId, user }) => {
+      const isAlreadyJoined = canvasActiveUsers.has(roomId) && canvasActiveUsers.get(roomId)?.has(user.id);
+      socket.join(roomId);
+      if (!socketRooms.has(socket.id)) {
+        socketRooms.set(socket.id, /* @__PURE__ */ new Set());
+      }
+      socketRooms.get(socket.id)?.add(roomId);
+      if (!isAlreadyJoined) {
+        console.log(`User ${user.id} joined canvas room ${roomId}`);
+        if (!canvasActiveUsers.has(roomId)) {
+          canvasActiveUsers.set(roomId, /* @__PURE__ */ new Map());
+        }
+        canvasActiveUsers.get(roomId)?.set(user.id, user);
+        io.to(roomId).emit("canvas:userJoined", user);
+        console.log(
+          `Active users in ${roomId}:`,
+          Array.from(canvasActiveUsers.get(roomId)?.keys() || []).length
+        );
+      } else {
+        canvasActiveUsers.get(roomId)?.set(user.id, user);
+        console.log(`User ${user.id} reconnected to canvas room ${roomId}`);
+      }
+    });
+    socket.on("canvas:leave", ({ roomId, userId: userId2 }) => {
+      handleUserLeaveCanvas(socket, roomId, userId2);
+    });
+    socket.on("canvas:requestActiveUsers", ({ roomId }) => {
+      if (canvasActiveUsers.has(roomId)) {
+        const activeUsersData = Array.from(canvasActiveUsers.get(roomId)?.values() || []);
+        socket.emit("canvas:activeUsers", activeUsersData);
+      } else {
+        socket.emit("canvas:activeUsers", []);
+      }
+    });
+    socket.on("canvas:userMovement", ({ roomId, userId: userId2, position }) => {
+      if (canvasActiveUsers.has(roomId) && canvasActiveUsers.get(roomId)?.has(userId2)) {
+        const userData = canvasActiveUsers.get(roomId)?.get(userId2);
+        if (userData) {
+          userData.mousePosition = position;
+        }
+      }
+      socket.to(roomId).emit("canvas:userMovement", { userId: userId2, position });
+    });
+    socket.on("canvas:draw", (drawingData) => {
+      const { roomId, ...rest } = drawingData;
+      console.log(`Drawing event from ${userId} in ${roomId}:`, rest.type);
+      try {
+        io.to(roomId).emit("canvas:draw", rest);
+      } catch (error) {
+        console.error("Error broadcasting drawing event:", error);
+      }
+    });
+    socket.on("canvas:requestSync", ({ roomId }) => {
+      socket.to(roomId).emit("canvas:requestSync", { userId });
+    });
+    socket.on("canvas:provideSync", ({ roomId, canvasData }) => {
+      io.to(roomId).emit("canvas:sync", canvasData);
+    });
     socket.on("disconnect", () => {
-      console.log(`User disconnected: ${socket.user?.id}`);
+      console.log(`User disconnected: ${userId}`);
+      if (userId) {
+        const userSocketsSet = userSockets.get(userId);
+        if (userSocketsSet) {
+          userSocketsSet.delete(socket.id);
+          if (userSocketsSet.size === 0) {
+            userSockets.delete(userId);
+            const userRooms = socketRooms.get(socket.id) || /* @__PURE__ */ new Set();
+            for (const roomId of userRooms) {
+              if (roomId.startsWith("canvas:")) {
+                handleUserLeaveCanvas(socket, roomId, userId);
+              }
+            }
+          } else {
+            console.log(`User ${userId} still has ${userSocketsSet.size} active connections`);
+          }
+        }
+      }
+      socketRooms.delete(socket.id);
     });
   });
+  function handleUserLeaveCanvas(socket, roomId, userId) {
+    socket.leave(roomId);
+    socketRooms.get(socket.id)?.delete(roomId);
+    console.log(`User ${userId} left canvas room ${roomId}`);
+    const userSocketsSet = userSockets.get(userId);
+    let hasOtherSocketsInRoom = false;
+    if (userSocketsSet) {
+      for (const socketId of userSocketsSet) {
+        if (socketId !== socket.id && io.sockets.sockets.get(socketId)?.rooms.has(roomId)) {
+          hasOtherSocketsInRoom = true;
+          break;
+        }
+      }
+    }
+    if (!hasOtherSocketsInRoom) {
+      canvasActiveUsers.get(roomId)?.delete(userId);
+      if (canvasActiveUsers.get(roomId)?.size === 0) {
+        canvasActiveUsers.delete(roomId);
+      }
+      io.to(roomId).emit("canvas:userLeft", userId);
+    } else {
+      console.log(`User ${userId} still has other connections in room ${roomId}, not removing`);
+    }
+  }
   console.log("Socket.IO server initialized successfully");
+};
+var getIO = () => {
+  if (!io) {
+    throw new Error("Socket.IO has not been initialized. Please call initSocketServer first.");
+  }
+  return io;
 };
 var getSocketIO = () => {
   if (!io) {
@@ -1242,7 +1363,7 @@ var deleteMessage = async (req, res) => {
 };
 
 // src/routes/chat.route.ts
-var router3 = express5__default.default.Router();
+var router3 = express6__default.default.Router();
 router3.post("/", isLoggedIn, createChat);
 router3.get("/community/:communityId", isLoggedIn, getCommunityChats);
 router3.get("/:chatId", isLoggedIn, getChatById);
@@ -1500,7 +1621,7 @@ var getUserResources = async (req, res) => {
 };
 
 // src/routes/resource.route.ts
-var router4 = express5__default.default.Router();
+var router4 = express6__default.default.Router();
 router4.post("/", isLoggedIn, upload.single("file"), createResource);
 router4.get("/:id", isLoggedIn, getResource);
 router4.get("/community/:communityId", isLoggedIn, getCommunityResources);
@@ -1508,9 +1629,190 @@ router4.get("/user/me", isLoggedIn, getUserResources);
 router4.put("/:id", isLoggedIn, upload.single("file"), updateResource);
 router4.delete("/:id", isLoggedIn, deleteResource);
 var resource_route_default = router4;
+
+// src/controllers/canvas.controller.ts
+var createCanvas = async (req, res) => {
+  try {
+    const { communityId } = req.body;
+    const userId = req.user.id;
+    if (!communityId) {
+      res.status(400).json({ message: "Community ID is required" });
+      return;
+    }
+    const community = await prisma.community.findUnique({
+      where: { id: communityId },
+      include: {
+        members: {
+          where: { userId }
+        }
+      }
+    });
+    if (!community) {
+      res.status(404).json({ message: "Community not found" });
+      return;
+    }
+    const isMember = community.members.length > 0 || community.ownerId === userId;
+    if (!isMember) {
+      res.status(403).json({ message: "You must be a member of the community to create a canvas" });
+      return;
+    }
+    const canvas = await prisma.canvas.create({
+      data: {
+        communityId
+      }
+    });
+    res.status(201).json(canvas);
+  } catch (error) {
+    console.error("Create Canvas Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+var getCanvasByIdOrCreate = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    if (id.startsWith("community:")) {
+      const communityId = id.replace("community:", "");
+      const community = await prisma.community.findUnique({
+        where: { id: communityId },
+        include: {
+          members: {
+            where: { userId }
+          }
+        }
+      });
+      if (!community) {
+        res.status(404).json({ message: "Community not found" });
+        return;
+      }
+      const isMember2 = community.members.length > 0 || community.ownerId === userId;
+      if (!isMember2) {
+        res.status(403).json({ message: "You must be a member of the community to access the canvas" });
+        return;
+      }
+      let canvas2 = await prisma.canvas.findFirst({
+        where: { communityId }
+      });
+      if (!canvas2) {
+        canvas2 = await prisma.canvas.create({
+          data: { communityId }
+        });
+      }
+      res.status(200).json(canvas2);
+      return;
+    }
+    const canvas = await prisma.canvas.findUnique({
+      where: { id },
+      include: {
+        community: {
+          include: {
+            members: {
+              where: { userId }
+            }
+          }
+        }
+      }
+    });
+    if (!canvas) {
+      res.status(404).json({ message: "Canvas not found" });
+      return;
+    }
+    const isMember = canvas.community.members.length > 0 || canvas.community.ownerId === userId;
+    if (!isMember) {
+      res.status(403).json({ message: "You must be a member of the community to access this canvas" });
+      return;
+    }
+    res.status(200).json(canvas);
+  } catch (error) {
+    console.error("Get Canvas Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+var updateCanvasSnapshot = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { snapshot } = req.body;
+    const userId = req.user.id;
+    if (!snapshot) {
+      res.status(400).json({ message: "Canvas snapshot is required" });
+      return;
+    }
+    const canvas = await prisma.canvas.findUnique({
+      where: { id },
+      include: {
+        community: {
+          include: {
+            members: {
+              where: { userId }
+            }
+          }
+        }
+      }
+    });
+    if (!canvas) {
+      res.status(404).json({ message: "Canvas not found" });
+      return;
+    }
+    const isMember = canvas.community.members.length > 0 || canvas.community.ownerId === userId;
+    if (!isMember) {
+      res.status(403).json({ message: "You must be a member of the community to update this canvas" });
+      return;
+    }
+    const updatedCanvas = await prisma.canvas.update({
+      where: { id },
+      data: { snapshot }
+    });
+    const io2 = getIO();
+    const roomId = `canvas:${canvas.communityId}`;
+    io2.to(roomId).emit("canvas:sync", snapshot);
+    res.status(200).json(updatedCanvas);
+  } catch (error) {
+    console.error("Update Canvas Snapshot Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+var getAllCanvasesByCommunity = async (req, res) => {
+  try {
+    const { communityId } = req.params;
+    const userId = req.user.id;
+    const community = await prisma.community.findUnique({
+      where: { id: communityId },
+      include: {
+        members: {
+          where: { userId }
+        }
+      }
+    });
+    if (!community) {
+      res.status(404).json({ message: "Community not found" });
+      return;
+    }
+    const isMember = community.members.length > 0 || community.ownerId === userId;
+    if (!isMember) {
+      res.status(403).json({ message: "You must be a member of the community to view canvases" });
+      return;
+    }
+    const canvases = await prisma.canvas.findMany({
+      where: { communityId },
+      orderBy: { updatedAt: "desc" }
+    });
+    res.status(200).json(canvases);
+  } catch (error) {
+    console.error("Get Community Canvases Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// src/routes/canvas.route.ts
+var router5 = express6__default.default.Router();
+router5.post("/", isLoggedIn, createCanvas);
+router5.get("/:id", isLoggedIn, getCanvasByIdOrCreate);
+router5.put("/:id/snapshot", isLoggedIn, updateCanvasSnapshot);
+router5.get("/community/:communityId", isLoggedIn, getAllCanvasesByCommunity);
+var canvas_route_default = router5;
 dotenv__default.default.config({ path: path__default.default.resolve(process.cwd(), ".env") });
-var app = express5__default.default();
-app.use(express5__default.default.json());
+var app = express6__default.default();
+app.use(express6__default.default.json());
 app.use(cookieParser__default.default());
 app.use(cors__default.default({
   origin: process.env.NODE_ENV === "development" ? "http://localhost:3000" : process.env.FRONTEND_URL,
@@ -1523,6 +1825,7 @@ app.use("/api/user", user_route_default);
 app.use("/api/communities", community_route_default);
 app.use("/api/chats", chat_route_default);
 app.use("/api/resources", resource_route_default);
+app.use("/api/canvas", canvas_route_default);
 app.use((err, req, res, next) => {
   console.error("Server Error:", err);
   res.status(500).json({

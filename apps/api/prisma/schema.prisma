@@ -44,6 +44,7 @@ model Community {
   chats       Chat[]
   messages    Message[]
   resources   Resource[]
+  canvases    Canvas[]
 }
 
 model CommunitiesOnUsers {
@@ -92,5 +93,15 @@ model Resource {
   updatedAt   DateTime           @updatedAt
 
   owner       User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  community   Community          @relation(fields: [communityId], references: [id], onDelete: Cascade)
+}
+
+model Canvas {
+  id          String             @id @default(cuid())
+  snapshot    String?            // Base64 encoded canvas data
+  communityId String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
   community   Community          @relation(fields: [communityId], references: [id], onDelete: Cascade)
 }
