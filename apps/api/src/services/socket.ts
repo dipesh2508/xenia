@@ -67,15 +67,26 @@ export const initSocketServer = (server: HttpServer): void => {
 
   io = new Server(server, {
     cors: {
-      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+      origin: process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:3000' 
+        : process.env.FRONTEND_URL || 'https://xenia-web.vercel.app',
       methods: ['GET', 'POST'],
       credentials: true
     },
     path: '/socket.io/',
     transports: ['websocket', 'polling'],
     // Increase ping timeout to prevent premature disconnections
-    pingTimeout: 60000
+    pingTimeout: 60000,
+    // Add additional configurations for serverless environment
+    allowEIO3: true,
+    connectTimeout: 45000
   });
+
+  console.log('Socket.IO initialized with CORS origin:', 
+    process.env.NODE_ENV === 'development' 
+      ? 'http://localhost:3000' 
+      : process.env.FRONTEND_URL || 'https://xenia-web.vercel.app'
+  );
 
   // Apply authentication middleware
   io.use(authenticateSocket);
