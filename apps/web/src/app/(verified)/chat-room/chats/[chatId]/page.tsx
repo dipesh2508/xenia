@@ -10,9 +10,10 @@ import {
 import MeChatBubble from "@/components/chatRoom/MeChatBubble";
 import RecieverChatBubble from "@/components/chatRoom/RecieverChatBubble";
 import SendMessage from "@/components/chatRoom/SendMessage";
+import ConnectionStatus from "@/components/chatRoom/ConnectionStatus";
 import { useApi } from "@/hooks/useApi";
+import { useSocket } from "@/hooks/useSocket";
 import { toast } from "sonner";
-import { io, Socket } from "socket.io-client";
 import { useUserDetails } from "@/hooks/useUserDetails";
 import { Button } from "@repo/ui/components/ui/button";
 
@@ -70,8 +71,6 @@ interface Community {
 
 const Page = ({ params }: { params: { chatId: string } }) => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -157,73 +156,38 @@ const Page = ({ params }: { params: { chatId: string } }) => {
     }
   );
 
-  // Connect to socket when component mounts and community data is available
-  useEffect(() => {
-    if (community?.chats && community.chats.length > 0) {
-      const chatId = community.chats[0]?.id;
+  // Handle new message event
+  const handleNewMessage = (message: Message) => {
+    setIsNewMessage(true);
+    setMessages((prev) => [...prev, message]);
+  };
 
-      // Initialize socket connection with proper configuration
-      const socketInstance = io(
-        process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000",
-        {
-          withCredentials: true,
-          transports: ["websocket", "polling"], // Try WebSocket first, fallback to polling
-          reconnectionAttempts: 5, // Try to reconnect 5 times
-          reconnectionDelay: 1000, // Start with 1 second delay
-          reconnectionDelayMax: 5000, // Maximum 5 seconds delay
-          timeout: 20000, // Connection timeout
-        }
-      );
+  // Handle updated message event
+  const handleMessageUpdated = (updatedMessage: Message) => {
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === updatedMessage.id ? updatedMessage : msg))
+    );
+  };
 
-      socketInstance.on("connect", () => {
-        console.log("Socket connected with ID:", socketInstance.id);
-        setIsConnected(true);
+  // Handle deleted message event
+  const handleMessageDeleted = ({ id }: { id: string }) => {
+    setMessages((prev) => prev.filter((msg) => msg.id !== id));
+  };
 
-        // Join the chat room once connected
-        socketInstance.emit("joinRoom", chatId);
-      });
-
-      socketInstance.on("connect_error", (error) => {
-        console.error("Socket connection error:", error);
-        toast.error("Socket connection error", {
-          description: "Trying to reconnect...",
-        });
-      });
-
-      socketInstance.on("disconnect", () => {
-        console.log("Socket disconnected");
-        setIsConnected(false);
-      });
-
-      socketInstance.on("newMessage", (message: Message) => {
-        setIsNewMessage(true); // Indicate this is a new message
-        setMessages((prev) => [...prev, message]);
-      });
-
-      socketInstance.on("messageUpdated", (updatedMessage: Message) => {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === updatedMessage.id ? updatedMessage : msg
-          )
-        );
-      });
-
-      socketInstance.on("messageDeleted", ({ id }: { id: string }) => {
-        setMessages((prev) => prev.filter((msg) => msg.id !== id));
-      });
-
-      setSocket(socketInstance);
-
-      // Cleanup function
-      return () => {
-        if (socketInstance.connected) {
-          socketInstance.emit("leaveRoom", chatId);
-          socketInstance.disconnect();
-        }
-        socketInstance.off();
-      };
-    }
-  }, [community]);
+  // Use the custom useSocket hook
+  const {
+    isConnected,
+    connectionStatus,
+    retryCount,
+    maxRetries,
+    connect
+  } = useSocket({
+    roomId: community?.chats?.[0]?.id,
+    onNewMessage: handleNewMessage,
+    onMessageUpdated: handleMessageUpdated,
+    onMessageDeleted: handleMessageDeleted,
+    maxRetries: 3
+  });
 
   // Update scroll behavior to handle both initial load and new messages
   useEffect(() => {
@@ -262,7 +226,7 @@ const Page = ({ params }: { params: { chatId: string } }) => {
             <Avatar className="h-11 w-11 rounded-full">
               <AvatarImage src={community?.image as string} alt="user image" />
               <AvatarFallback className="rounded-lg">
-                {community?.name.slice(0, 1).toUpperCase()}
+                {community?.name?.slice(0, 1).toUpperCase()}
               </AvatarFallback>
             </Avatar>
 
@@ -276,7 +240,15 @@ const Page = ({ params }: { params: { chatId: string } }) => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            {/* Add connection status indicator in header */}
+            <ConnectionStatus
+              status={connectionStatus}
+              retryCount={retryCount}
+              maxRetries={maxRetries}
+              onRetry={connect}
+            />
+          
             <Tabs defaultValue="message">
               <TabsList className="bg-chatroom-accent/10">
                 <TabsTrigger value="message">Message</TabsTrigger>
@@ -341,3 +313,5 @@ const Page = ({ params }: { params: { chatId: string } }) => {
 };
 
 export default Page;
+
+

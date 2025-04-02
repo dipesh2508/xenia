@@ -70,8 +70,6 @@ type Communities = {
 }[];
 
 const CommunitySidebar = ({ roomType }: { roomType: string }) => {
-  console.log("Room Type: ", roomType);
-
   const roomPath = roomType === "chats" ? "/chat-room/chats" : "/doc-room/docs";
   const {
     data: communities,

@@ -10,11 +10,13 @@ import {
 import MeChatBubble from "@/components/chatRoom/MeChatBubble";
 import RecieverChatBubble from "@/components/chatRoom/RecieverChatBubble";
 import SendMessage from "@/components/chatRoom/SendMessage";
+import ConnectionStatus from "@/components/chatRoom/ConnectionStatus";
 import { useApi } from "@/hooks/useApi";
+import { useSocket } from "@/hooks/useSocket";
 import { toast } from "sonner";
-import { io, Socket } from "socket.io-client";
 import { useUserDetails } from "@/hooks/useUserDetails";
 import { Button } from "@repo/ui/components/ui/button";
+import ResourceBubble from "@/components/chatRoom/ResourceBubble";
 
 interface Message {
   id: string;
@@ -56,27 +58,29 @@ interface Chat {
   };
 }
 
-interface Resource {
+interface Owner {
   id: string;
-  title: string;
-  content: string;
-  communityId: string;
-  ownerId: string;
-  createdAt: string;
-  updatedAt: string;
-  isPublished: boolean;
-  status: string;
-  type: string;
-  community: Community;
-  owner: User;
-  messages?: Message[];
-  _count: {
-    messages: number;
-    comments?: number;
-    likes?: number;
-  };
+  name: string;
+  image: string | null;
 }
 
+interface Resource {
+  id: string;
+  communityId: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  ownerId: string;
+  owner: Owner;
+  title: string;
+}
+interface PaginationResponse {
+  hasMore: boolean;
+  limit: number;
+  page: number;
+  resources: Resource[];
+  total: number;
+}
 interface Community {
   id: string;
   name: string;
@@ -91,9 +95,7 @@ interface Community {
 }
 
 const Page = ({ params }: { params: { resourceId: string } }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [messages, setMessages] = useState<Resource[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -103,8 +105,28 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
   const [isNewMessage, setIsNewMessage] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Add a separate useApi hook for fetching older messages
-  const { mutate: fetchOlderMessagesApi } = useApi(
+  const { data, error, isLoading } = useApi<Community>(
+    `/communities/${resourceId}`,
+    {
+      method: "GET",
+      // enabled: !!,
+      // dependencies: [],
+      onSuccess: (data) => {
+        console.log(data);
+        toast.success("Community", {
+          description: `Community info fetched successfully`,
+        });
+      },
+      onError: (error) => {
+        toast.error("Community info not fetched successfully", {
+          description: error.message,
+        });
+      },
+    }
+  );
+
+  // Add a separate useApi hook for fetching older resources
+  const { mutate: fetchOlderResourcesApi } = useApi(
     `/resources/community/${resourceId}`,
     {
       method: "GET",
@@ -113,21 +135,31 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
   );
 
   const loadOlderMessages = async () => {
-    if (isLoadingMore || !community?.chats?.[0]?.id) return;
+    if (isLoadingMore) return;
 
     setIsLoadingMore(true);
     try {
       const nextPage = currentPage + 1;
-      const response = (await fetchOlderMessagesApi({
-        url: `/docs/resources/community/${community.chats[0].id}?page=${nextPage}&limit=20`,
-      })) as MessageResponse;
+      const response = (await fetchOlderResourcesApi({
+        url: `/resources/community/${resourceId}?page=${nextPage}&limit=20`,
+      })) as PaginationResponse;
 
-      setIsNewMessage(false); // Indicate these are old messages
-      setMessages((prev) => [...response.messages.reverse(), ...prev]);
-      setHasMore(response.hasMore);
-      setCurrentPage(response.page);
+      setIsNewMessage(false); // Indicate these are old resources
+
+      if (response.resources && response.resources.length > 0) {
+        // Sort the new resources to show oldest first
+        const sortedResources = [...response.resources].sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+
+        // Add the new resources to the beginning of the current list
+        setMessages((prev) => [...sortedResources, ...prev]);
+        setHasMore(response.hasMore);
+        setCurrentPage(response.page);
+      }
     } catch (error: any) {
-      toast.error("Failed to load older messages", {
+      toast.error("Failed to load older resources", {
         description: error.message,
       });
     } finally {
@@ -135,32 +167,36 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
     }
   };
 
-  const { data: community, isLoading: getLoading } = useApi<Community>(
-    `/resources/community/${resourceId}`,
+  const { data: community, isLoading: getLoading } = useApi<PaginationResponse>(
+    `resources/community/${resourceId}`,
     {
       method: "GET",
       onSuccess: (data) => {
-        console.log("community resources: ", data);
-        toast.success("Resource loaded", {
-          description: `Let's explore ${data.name}`,
+        console.log("resources/community/id", data);
+        toast.success("Resources loaded", {
+          description: `${data.total} resources available`,
         });
 
-        // Use the messages already included in the community response
-        if (data.chats && data.chats.length > 0 && data.chats[0]?.messages) {
-          // Set the messages from the community response - sort to show oldest first
-          const sortedMessages = [...(data.chats[0].messages || [])].sort(
+        // Check if we have resources in the response
+        if (data.resources && data.resources.length > 0) {
+          // Sort the resources array to show oldest first
+          const sortedResources = [...data.resources].sort(
             (a, b) =>
               new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
           );
-          setMessages(sortedMessages);
-          // Set hasMore if there are more than 20 initial messages
-          setHasMore(data.chats[0]._count.messages > 20);
-          // Set initial load to true when first messages are set
+
+          // Use the sorted resources
+          setMessages(sortedResources);
+
+          // Set hasMore if there are more resources than the current limit
+          setHasMore(data.total > data.limit);
+
+          // Set initial load to true when first resources are set
           setIsInitialLoad(true);
         }
       },
       onError: (error) => {
-        toast.error("Resource not found", {
+        toast.error("Resources not fetched successfully", {
           description: error.message,
         });
       },
@@ -179,73 +215,32 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
     }
   );
 
-  // Connect to socket when component mounts and community data is available
-  useEffect(() => {
-    if (community?.chats && community.chats.length > 0) {
-      const chatId = community.chats[0]?.id;
+  //  // Handle new message event
+  const handleNewMessage = (message: Resource) => {
+    setIsNewMessage(true);
+    setMessages((prev) => [...prev, message]);
+  };
+  // Handle updated message event
+  const handleMessageUpdated = (updatedMessage: Resource) => {
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === updatedMessage.id ? updatedMessage : msg))
+    );
+  };
 
-      // Initialize socket connection with proper configuration
-      const socketInstance = io(
-        process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000",
-        {
-          withCredentials: true,
-          transports: ["websocket", "polling"], // Try WebSocket first, fallback to polling
-          reconnectionAttempts: 5, // Try to reconnect 5 times
-          reconnectionDelay: 1000, // Start with 1 second delay
-          reconnectionDelayMax: 5000, // Maximum 5 seconds delay
-          timeout: 20000, // Connection timeout
-        }
-      );
+  // Handle deleted message event
+  const handleMessageDeleted = ({ id }: { id: string }) => {
+    setMessages((prev) => prev.filter((msg) => msg.id !== id));
+  };
 
-      socketInstance.on("connect", () => {
-        console.log("Socket connected with ID:", socketInstance.id);
-        setIsConnected(true);
-
-        // Join the chat room once connected
-        socketInstance.emit("joinRoom", chatId);
-      });
-
-      socketInstance.on("connect_error", (error) => {
-        console.error("Socket connection error:", error);
-        toast.error("Socket connection error", {
-          description: "Trying to reconnect...",
-        });
-      });
-
-      socketInstance.on("disconnect", () => {
-        console.log("Socket disconnected");
-        setIsConnected(false);
-      });
-
-      socketInstance.on("newMessage", (message: Message) => {
-        setIsNewMessage(true); // Indicate this is a new message
-        setMessages((prev) => [...prev, message]);
-      });
-
-      socketInstance.on("messageUpdated", (updatedMessage: Message) => {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === updatedMessage.id ? updatedMessage : msg
-          )
-        );
-      });
-
-      socketInstance.on("messageDeleted", ({ id }: { id: string }) => {
-        setMessages((prev) => prev.filter((msg) => msg.id !== id));
-      });
-
-      setSocket(socketInstance);
-
-      // Cleanup function
-      return () => {
-        if (socketInstance.connected) {
-          socketInstance.emit("leaveRoom", chatId);
-          socketInstance.disconnect();
-        }
-        socketInstance.off();
-      };
-    }
-  }, [community]);
+  // Use the custom useSocket hook
+  const { isConnected, connectionStatus, retryCount, maxRetries, connect } =
+    useSocket({
+      roomId: community?.resources?.[0]?.id,
+      onNewMessage: handleNewMessage,
+      onMessageUpdated: handleMessageUpdated,
+      onMessageDeleted: handleMessageDeleted,
+      maxRetries: 3,
+    });
 
   // Update scroll behavior to handle both initial load and new messages
   useEffect(() => {
@@ -259,9 +254,9 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
 
   // Send message function
   const sendMessage = async (content: string) => {
-    if (!content.trim() || !community?.chats?.[0]?.id) return;
+    if (!content.trim() || !community?.resources?.[0]?.id) return;
 
-    const chatId = community.chats[0].id;
+    const chatId = community.resources[0].id;
 
     try {
       await sendMessageMutation({
@@ -281,18 +276,18 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
         <header className="sticky top-0 flex shrink-0 items-center gap-2 border-b bg-background px-3.5 py-2 justify-between z-10">
           <div className="flex items-center justify-between">
             <Avatar className="h-11 w-11 rounded-full">
-              <AvatarImage src={community?.image as string} alt="user image" />
+              <AvatarImage src={data?.image as string} alt="user image" />
               <AvatarFallback className="rounded-lg">
-                {/* {community?.name.slice(0, 1).toUpperCase()} */}
+                {data?.name.slice(0, 1).toUpperCase()}
               </AvatarFallback>
             </Avatar>
 
             <div className="flex flex-col items-start gap-2 whitespace-nowrap p-4 pr-0 text-sm leading-tight">
               <span className="text-foreground/90 font-semibold">
-                {community?.name}
+                {data?.name}
               </span>{" "}
               <span className="line-clamp-2 w-[260px] whitespace-break-spaces text-xs">
-                {community?.description}
+                {data?.description}
               </span>
             </div>
           </div>
@@ -332,18 +327,15 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
                     No messages yet. Start the conversation!
                   </div>
                 )}
-                {messages.map((message) =>
-                  message.senderId === user?.id ? (
-                    <MeChatBubble key={message.id} content={message.content} />
-                  ) : (
-                    <RecieverChatBubble
-                      key={message.id}
-                      content={message.content}
-                      sender={message.sender.name}
-                      avatar={message.sender.image}
-                    />
-                  )
-                )}
+                {messages.map((message) => (
+                  <ResourceBubble
+                    key={message.id}
+                    content={message.content}
+                    sender={message.owner.name}
+                    avatar={message.owner.image}
+                    title={message.title}
+                  />
+                ))}
               </div>
               <div ref={messagesEndRef} />
             </div>
@@ -353,7 +345,7 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
         <SendMessage
           onSendMessage={sendMessage}
           isConnected={isConnected}
-          disabled={!community?.chats?.[0]?.id || isSendingMessage}
+          disabled={!community?.resources?.[0]?.id || isSendingMessage}
           room="docs"
         />
       </div>

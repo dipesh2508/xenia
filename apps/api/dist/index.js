@@ -1024,15 +1024,22 @@ var initSocketServer = (server2) => {
   }
   io = new socket_io.Server(server2, {
     cors: {
-      origin: process.env.FRONTEND_URL || "http://localhost:3000",
+      origin: process.env.NODE_ENV === "development" ? "http://localhost:3000" : process.env.FRONTEND_URL || "https://xenia-web.vercel.app",
       methods: ["GET", "POST"],
       credentials: true
     },
     path: "/socket.io/",
     transports: ["websocket", "polling"],
     // Increase ping timeout to prevent premature disconnections
-    pingTimeout: 6e4
+    pingTimeout: 6e4,
+    // Add additional configurations for serverless environment
+    allowEIO3: true,
+    connectTimeout: 45e3
   });
+  console.log(
+    "Socket.IO initialized with CORS origin:",
+    process.env.NODE_ENV === "development" ? "http://localhost:3000" : process.env.FRONTEND_URL || "https://xenia-web.vercel.app"
+  );
   io.use(authenticateSocket);
   io.on("connection", (socket) => {
     console.log(`User connected: ${socket.user?.id}`);
