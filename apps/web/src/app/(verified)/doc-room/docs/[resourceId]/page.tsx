@@ -292,7 +292,15 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            {/* Add connection status indicator in header */}
+            <ConnectionStatus
+              status={connectionStatus}
+              retryCount={retryCount}
+              maxRetries={maxRetries}
+              onRetry={connect}
+            />
+
             <Tabs defaultValue="message">
               <TabsList className="bg-chatroom-accent/10">
                 <TabsTrigger value="message">Message</TabsTrigger>
