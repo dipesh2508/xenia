@@ -173,10 +173,7 @@ export const updateCanvasSnapshot = async (req: any, res: Response): Promise<voi
       data: { snapshot }
     });
 
-    // Notify all connected clients about the updated canvas
-    const io = getIO();
-    const roomId = `canvas:${canvas.communityId}`;
-    io.to(roomId).emit('canvas:sync', snapshot);
+    console.log(`Canvas ${id} snapshot updated manually by user ${userId}`);
 
     res.status(200).json(updatedCanvas);
   } catch (error) {

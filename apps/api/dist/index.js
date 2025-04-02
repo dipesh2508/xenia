@@ -982,6 +982,33 @@ var deleteChat = async (req, res) => {
   }
 };
 var io;
+var canvasStates = /* @__PURE__ */ new Map();
+var saveCanvasStateToDB = async (roomId, canvasData) => {
+  try {
+    const communityId = roomId.replace("canvas:", "");
+    console.log(`Saving canvas state to DB for community ${communityId}`);
+    const canvas = await prisma.canvas.findFirst({
+      where: { communityId }
+    });
+    if (canvas) {
+      await prisma.canvas.update({
+        where: { id: canvas.id },
+        data: { snapshot: canvasData }
+      });
+      console.log(`Updated canvas ${canvas.id} with new snapshot`);
+    } else {
+      const newCanvas = await prisma.canvas.create({
+        data: {
+          communityId,
+          snapshot: canvasData
+        }
+      });
+      console.log(`Created new canvas ${newCanvas.id} with snapshot`);
+    }
+  } catch (error) {
+    console.error("Error saving canvas state to DB:", error);
+  }
+};
 var authenticateSocket = async (socket, next) => {
   try {
     const cookies = socket.handshake.headers.cookie;
@@ -1042,29 +1069,17 @@ var initSocketServer = (server2) => {
   );
   io.use(authenticateSocket);
   const canvasActiveUsers = /* @__PURE__ */ new Map();
-  const userSockets = /* @__PURE__ */ new Map();
-  const socketRooms = /* @__PURE__ */ new Map();
+  const userDataCache = /* @__PURE__ */ new Map();
+  const lastSyncRequestTime = /* @__PURE__ */ new Map();
   io.on("connection", (socket) => {
-    const userId = socket.user?.id;
-    console.log(`User connected: ${userId}`);
-    if (userId) {
-      if (!userSockets.has(userId)) {
-        userSockets.set(userId, /* @__PURE__ */ new Set());
-      }
-      userSockets.get(userId)?.add(socket.id);
-    }
+    console.log(`User connected: ${socket.user?.id}`);
     socket.on("joinRoom", (roomId) => {
       socket.join(roomId);
-      if (!socketRooms.has(socket.id)) {
-        socketRooms.set(socket.id, /* @__PURE__ */ new Set());
-      }
-      socketRooms.get(socket.id)?.add(roomId);
-      console.log(`User ${userId} joined room ${roomId}`);
+      console.log(`User ${socket.user?.id} joined room ${roomId}`);
     });
     socket.on("leaveRoom", (roomId) => {
       socket.leave(roomId);
-      socketRooms.get(socket.id)?.delete(roomId);
-      console.log(`User ${userId} left room ${roomId}`);
+      console.log(`User ${socket.user?.id} left room ${roomId}`);
     });
     socket.on("join:community", (communityId) => {
       socket.join(`community:${communityId}`);
@@ -1075,116 +1090,136 @@ var initSocketServer = (server2) => {
       console.log(`Socket ${socket.id} left community:${communityId}`);
     });
     socket.on("canvas:join", ({ roomId, user }) => {
-      const isAlreadyJoined = canvasActiveUsers.has(roomId) && canvasActiveUsers.get(roomId)?.has(user.id);
       socket.join(roomId);
-      if (!socketRooms.has(socket.id)) {
-        socketRooms.set(socket.id, /* @__PURE__ */ new Set());
+      console.log(`User ${user.id} (${user.name}) joined canvas room ${roomId}`);
+      userDataCache.set(user.id, user);
+      if (!canvasActiveUsers.has(roomId)) {
+        canvasActiveUsers.set(roomId, /* @__PURE__ */ new Set());
       }
-      socketRooms.get(socket.id)?.add(roomId);
-      if (!isAlreadyJoined) {
-        console.log(`User ${user.id} joined canvas room ${roomId}`);
-        if (!canvasActiveUsers.has(roomId)) {
-          canvasActiveUsers.set(roomId, /* @__PURE__ */ new Map());
-        }
-        canvasActiveUsers.get(roomId)?.set(user.id, user);
-        io.to(roomId).emit("canvas:userJoined", user);
-        console.log(
-          `Active users in ${roomId}:`,
-          Array.from(canvasActiveUsers.get(roomId)?.keys() || []).length
-        );
-      } else {
-        canvasActiveUsers.get(roomId)?.set(user.id, user);
-        console.log(`User ${user.id} reconnected to canvas room ${roomId}`);
-      }
+      canvasActiveUsers.get(roomId)?.add(user.id);
+      const activeUsers = Array.from(canvasActiveUsers.get(roomId) || []);
+      console.log(
+        `Active users in ${roomId} before emitting join:`,
+        activeUsers.length,
+        activeUsers.map((id) => ({ id, name: userDataCache.get(id)?.name }))
+      );
+      io.to(roomId).emit("canvas:userJoined", user);
     });
-    socket.on("canvas:leave", ({ roomId, userId: userId2 }) => {
-      handleUserLeaveCanvas(socket, roomId, userId2);
+    socket.on("canvas:leave", ({ roomId, userId }) => {
+      socket.leave(roomId);
+      console.log(`User ${userId} left canvas room ${roomId}`);
+      canvasActiveUsers.get(roomId)?.delete(userId);
+      const usersCount = canvasActiveUsers.get(roomId)?.size || 0;
+      console.log(`Remaining users in ${roomId}: ${usersCount}`);
+      if (usersCount === 0 && canvasStates.has(roomId)) {
+        const canvasData = canvasStates.get(roomId);
+        if (canvasData) {
+          saveCanvasStateToDB(roomId, canvasData);
+          canvasStates.delete(roomId);
+        }
+        canvasActiveUsers.delete(roomId);
+      }
+      io.to(roomId).emit("canvas:userLeft", userId);
     });
     socket.on("canvas:requestActiveUsers", ({ roomId }) => {
       if (canvasActiveUsers.has(roomId)) {
-        const activeUsersData = Array.from(canvasActiveUsers.get(roomId)?.values() || []);
+        const activeUserIds = Array.from(canvasActiveUsers.get(roomId) || []);
+        const activeUsersData = activeUserIds.map((id) => userDataCache.get(id)).filter(Boolean);
+        console.log(
+          `Sending active users data for ${roomId}:`,
+          activeUsersData.length,
+          activeUsersData.map((u) => ({ id: u.id, name: u.name }))
+        );
         socket.emit("canvas:activeUsers", activeUsersData);
       } else {
+        console.log(`No active users in ${roomId}`);
         socket.emit("canvas:activeUsers", []);
       }
     });
-    socket.on("canvas:userMovement", ({ roomId, userId: userId2, position }) => {
-      if (canvasActiveUsers.has(roomId) && canvasActiveUsers.get(roomId)?.has(userId2)) {
-        const userData = canvasActiveUsers.get(roomId)?.get(userId2);
-        if (userData) {
-          userData.mousePosition = position;
-        }
-      }
-      socket.to(roomId).emit("canvas:userMovement", { userId: userId2, position });
+    socket.on("canvas:userMovement", ({ roomId, userId, position }) => {
+      socket.to(roomId).emit("canvas:userMovement", { userId, position });
     });
     socket.on("canvas:draw", (drawingData) => {
-      const { roomId, ...rest } = drawingData;
-      console.log(`Drawing event from ${userId} in ${roomId}:`, rest.type);
+      const { roomId, type, ...rest } = drawingData;
+      console.log(`Drawing event from ${socket.user?.id} in ${roomId}: ${type}`);
       try {
-        io.to(roomId).emit("canvas:draw", rest);
+        socket.to(roomId).emit("canvas:draw", { type, ...rest });
+        const significantEvents = ["clear", "circle", "rectangle", "line"];
+        if (significantEvents.includes(type)) {
+          const now = Date.now();
+          const lastSync = lastSyncRequestTime.get(roomId) || 0;
+          if (now - lastSync > 2e3) {
+            lastSyncRequestTime.set(roomId, now);
+            setTimeout(() => {
+              socket.emit("canvas:requestSync", { userId: socket.user?.id });
+            }, 500);
+          }
+        }
       } catch (error) {
         console.error("Error broadcasting drawing event:", error);
       }
     });
     socket.on("canvas:requestSync", ({ roomId }) => {
+      const userId = socket.user?.id;
+      console.log(`Canvas sync requested by ${userId} in room ${roomId}`);
       socket.to(roomId).emit("canvas:requestSync", { userId });
     });
     socket.on("canvas:provideSync", ({ roomId, canvasData }) => {
+      console.log(`Canvas sync provided in room ${roomId}, data length: ${canvasData ? canvasData.length : 0}`);
+      if (canvasData) {
+        canvasStates.set(roomId, canvasData);
+      }
       io.to(roomId).emit("canvas:sync", canvasData);
     });
+    socket.on("canvas:userActivity", ({ roomId, userId, timestamp }) => {
+      console.log(`User activity heartbeat from ${userId} in ${roomId}`);
+      if (canvasActiveUsers.has(roomId)) {
+        if (!canvasActiveUsers.get(roomId)?.has(userId)) {
+          canvasActiveUsers.get(roomId)?.add(userId);
+        }
+      } else {
+        canvasActiveUsers.set(roomId, /* @__PURE__ */ new Set([userId]));
+      }
+    });
     socket.on("disconnect", () => {
+      const userId = socket.user?.id;
       console.log(`User disconnected: ${userId}`);
-      if (userId) {
-        const userSocketsSet = userSockets.get(userId);
-        if (userSocketsSet) {
-          userSocketsSet.delete(socket.id);
-          if (userSocketsSet.size === 0) {
-            userSockets.delete(userId);
-            const userRooms = socketRooms.get(socket.id) || /* @__PURE__ */ new Set();
-            for (const roomId of userRooms) {
-              if (roomId.startsWith("canvas:")) {
-                handleUserLeaveCanvas(socket, roomId, userId);
-              }
+      canvasActiveUsers.forEach((users, roomId) => {
+        if (users.has(userId)) {
+          users.delete(userId);
+          const usersCount = users.size;
+          console.log(`After disconnect: Remaining users in ${roomId}: ${usersCount}`);
+          if (usersCount === 0 && canvasStates.has(roomId)) {
+            const canvasData = canvasStates.get(roomId);
+            if (canvasData) {
+              saveCanvasStateToDB(roomId, canvasData);
+              canvasStates.delete(roomId);
             }
+            canvasActiveUsers.delete(roomId);
           } else {
-            console.log(`User ${userId} still has ${userSocketsSet.size} active connections`);
+            io.to(roomId).emit("canvas:userLeft", userId);
+          }
+        }
+      });
+      userDataCache.delete(userId);
+    });
+  });
+  console.log("Socket.IO server initialized successfully");
+  setInterval(() => {
+    canvasActiveUsers.forEach((users, roomId) => {
+      if (users.size > 0) {
+        const userId = Array.from(users)[0];
+        console.log(`Requesting periodic canvas sync for ${roomId} from user ${userId}`);
+        const sockets = Array.from(io.sockets.sockets.values());
+        for (const socket of sockets) {
+          if (socket.user?.id === userId) {
+            socket.emit("canvas:requestSync", { userId });
+            break;
           }
         }
       }
-      socketRooms.delete(socket.id);
     });
-  });
-  function handleUserLeaveCanvas(socket, roomId, userId) {
-    socket.leave(roomId);
-    socketRooms.get(socket.id)?.delete(roomId);
-    console.log(`User ${userId} left canvas room ${roomId}`);
-    const userSocketsSet = userSockets.get(userId);
-    let hasOtherSocketsInRoom = false;
-    if (userSocketsSet) {
-      for (const socketId of userSocketsSet) {
-        if (socketId !== socket.id && io.sockets.sockets.get(socketId)?.rooms.has(roomId)) {
-          hasOtherSocketsInRoom = true;
-          break;
-        }
-      }
-    }
-    if (!hasOtherSocketsInRoom) {
-      canvasActiveUsers.get(roomId)?.delete(userId);
-      if (canvasActiveUsers.get(roomId)?.size === 0) {
-        canvasActiveUsers.delete(roomId);
-      }
-      io.to(roomId).emit("canvas:userLeft", userId);
-    } else {
-      console.log(`User ${userId} still has other connections in room ${roomId}, not removing`);
-    }
-  }
-  console.log("Socket.IO server initialized successfully");
-};
-var getIO = () => {
-  if (!io) {
-    throw new Error("Socket.IO has not been initialized. Please call initSocketServer first.");
-  }
-  return io;
+  }, 6e4);
 };
 var getSocketIO = () => {
   if (!io) {
@@ -1762,9 +1797,7 @@ var updateCanvasSnapshot = async (req, res) => {
       where: { id },
       data: { snapshot }
     });
-    const io2 = getIO();
-    const roomId = `canvas:${canvas.communityId}`;
-    io2.to(roomId).emit("canvas:sync", snapshot);
+    console.log(`Canvas ${id} snapshot updated manually by user ${userId}`);
     res.status(200).json(updatedCanvas);
   } catch (error) {
     console.error("Update Canvas Snapshot Error:", error);

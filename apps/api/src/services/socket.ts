@@ -5,6 +5,44 @@ import { prisma } from '@/utils/prisma';
 
 let io: Server;
 
+// Add a new map to store the current canvas state in memory
+const canvasStates = new Map<string, string>();
+
+// Function to save canvas state to database when room is empty
+const saveCanvasStateToDB = async (roomId: string, canvasData: string) => {
+  try {
+    // Extract communityId from roomId (format: canvas:{communityId})
+    const communityId = roomId.replace('canvas:', '');
+    
+    console.log(`Saving canvas state to DB for community ${communityId}`);
+    
+    // Find existing canvas for this community
+    const canvas = await prisma.canvas.findFirst({
+      where: { communityId }
+    });
+    
+    if (canvas) {
+      // Update existing canvas
+      await prisma.canvas.update({
+        where: { id: canvas.id },
+        data: { snapshot: canvasData }
+      });
+      console.log(`Updated canvas ${canvas.id} with new snapshot`);
+    } else {
+      // Create new canvas
+      const newCanvas = await prisma.canvas.create({
+        data: {
+          communityId,
+          snapshot: canvasData
+        }
+      });
+      console.log(`Created new canvas ${newCanvas.id} with snapshot`);
+    }
+  } catch (error) {
+    console.error('Error saving canvas state to DB:', error);
+  }
+};
+
 // Socket middleware to authenticate connections
 const authenticateSocket = async (socket: Socket, next: (err?: Error) => void) => {
   try {
@@ -95,6 +133,9 @@ export const initSocketServer = (server: HttpServer): void => {
   const canvasActiveUsers = new Map<string, Set<string>>();
   const userDataCache = new Map<string, any>();
 
+  // Keep track of when we last requested a sync for each room
+  const lastSyncRequestTime = new Map<string, number>();
+
   io.on('connection', (socket: Socket) => {
     console.log(`User connected: ${(socket as any).user?.id}`);
     
@@ -126,7 +167,7 @@ export const initSocketServer = (server: HttpServer): void => {
     // User joins canvas
     socket.on("canvas:join", ({ roomId, user }) => {
       socket.join(roomId);
-      console.log(`User ${user.id} joined canvas room ${roomId}`);
+      console.log(`User ${user.id} (${user.name}) joined canvas room ${roomId}`);
       
       // Store user data in cache
       userDataCache.set(user.id, user);
@@ -137,12 +178,15 @@ export const initSocketServer = (server: HttpServer): void => {
       }
       canvasActiveUsers.get(roomId)?.add(user.id);
       
+      // Log active users before emitting
+      const activeUsers = Array.from(canvasActiveUsers.get(roomId) || []);
+      console.log(`Active users in ${roomId} before emitting join:`, 
+        activeUsers.length,
+        activeUsers.map(id => ({ id, name: userDataCache.get(id)?.name }))
+      );
+      
       // Broadcast to all clients in the room that a new user joined
       io.to(roomId).emit("canvas:userJoined", user);
-      
-      // Log active users in this room
-      console.log(`Active users in ${roomId}:`, 
-        Array.from(canvasActiveUsers.get(roomId) || []).length);
     });
     
     // User leaves canvas
@@ -153,8 +197,20 @@ export const initSocketServer = (server: HttpServer): void => {
       // Remove user from active users for this room
       canvasActiveUsers.get(roomId)?.delete(userId);
       
-      // If room is empty, remove it from the map
-      if (canvasActiveUsers.get(roomId)?.size === 0) {
+      // Get current count of users in the room
+      const usersCount = canvasActiveUsers.get(roomId)?.size || 0;
+      console.log(`Remaining users in ${roomId}: ${usersCount}`);
+      
+      // If room is empty and we have a canvas state, save it to the database
+      if (usersCount === 0 && canvasStates.has(roomId)) {
+        const canvasData = canvasStates.get(roomId);
+        if (canvasData) {
+          saveCanvasStateToDB(roomId, canvasData);
+          // Clear the canvas state from memory after saving
+          canvasStates.delete(roomId);
+        }
+        
+        // Remove the room from active users tracking
         canvasActiveUsers.delete(roomId);
       }
       
@@ -170,8 +226,16 @@ export const initSocketServer = (server: HttpServer): void => {
           .map(id => userDataCache.get(id))
           .filter(Boolean);
         
+        console.log(`Sending active users data for ${roomId}:`, 
+          activeUsersData.length,
+          activeUsersData.map(u => ({ id: u.id, name: u.name }))
+        );
+        
         // Send the active users data to the requesting client
         socket.emit("canvas:activeUsers", activeUsersData);
+      } else {
+        console.log(`No active users in ${roomId}`);
+        socket.emit("canvas:activeUsers", []);
       }
     });
     
@@ -183,14 +247,33 @@ export const initSocketServer = (server: HttpServer): void => {
     
     // Drawing events
     socket.on("canvas:draw", (drawingData) => {
-      const { roomId, ...rest } = drawingData;
+      const { roomId, type, ...rest } = drawingData;
       
       // Log drawing events for debugging
-      console.log(`Drawing event from ${(socket as any).user?.id} in ${roomId}:`, rest.type);
+      console.log(`Drawing event from ${(socket as any).user?.id} in ${roomId}: ${type}`);
       
       try {
-        // Ensure reliable delivery by broadcasting to all clients in the room
-        io.to(roomId).emit("canvas:draw", rest);
+        // Broadcast only to other clients in the room, not back to the sender
+        socket.to(roomId).emit("canvas:draw", { type, ...rest });
+        
+        // For significant drawing events, we want to ensure we have the latest state in memory
+        // But we need to debounce this to avoid too many sync requests
+        const significantEvents = ['clear', 'circle', 'rectangle', 'line'];
+        if (significantEvents.includes(type)) {
+          const now = Date.now();
+          const lastSync = lastSyncRequestTime.get(roomId) || 0;
+          
+          // Only request a sync if we haven't requested one in the last 2 seconds
+          if (now - lastSync > 2000) {
+            lastSyncRequestTime.set(roomId, now);
+            
+            // Use a timeout to let the drawing be applied first
+            setTimeout(() => {
+              // Request the current drawer to send the full canvas state
+              socket.emit("canvas:requestSync", { userId: (socket as any).user?.id });
+            }, 500);
+          }
+        }
       } catch (error) {
         console.error("Error broadcasting drawing event:", error);
       }
@@ -198,14 +281,39 @@ export const initSocketServer = (server: HttpServer): void => {
     
     // Request for canvas sync (when a user joins late)
     socket.on("canvas:requestSync", ({ roomId }) => {
+      const userId = (socket as any).user?.id;
+      console.log(`Canvas sync requested by ${userId} in room ${roomId}`);
+      
       // Broadcast a request for the current canvas state
-      socket.to(roomId).emit("canvas:requestSync", { userId: (socket as any).user?.id });
+      socket.to(roomId).emit("canvas:requestSync", { userId });
     });
     
     // Provide canvas sync
     socket.on("canvas:provideSync", ({ roomId, canvasData }) => {
+      // Log sync event (without full data URL for brevity)
+      console.log(`Canvas sync provided in room ${roomId}, data length: ${canvasData ? canvasData.length : 0}`);
+      
+      // Save the canvas state in memory
+      if (canvasData) {
+        canvasStates.set(roomId, canvasData);
+      }
+      
       // Forward the canvas data to all users in the room
       io.to(roomId).emit("canvas:sync", canvasData);
+    });
+
+    // User activity heartbeat
+    socket.on("canvas:userActivity", ({ roomId, userId, timestamp }) => {
+      console.log(`User activity heartbeat from ${userId} in ${roomId}`);
+      
+      // Update the user's last active timestamp without triggering join events
+      if (canvasActiveUsers.has(roomId)) {
+        if (!canvasActiveUsers.get(roomId)?.has(userId)) {
+          canvasActiveUsers.get(roomId)?.add(userId);
+        }
+      } else {
+        canvasActiveUsers.set(roomId, new Set([userId]));
+      }
     });
 
     // Handle disconnection
@@ -217,10 +325,26 @@ export const initSocketServer = (server: HttpServer): void => {
       canvasActiveUsers.forEach((users, roomId) => {
         if (users.has(userId)) {
           users.delete(userId);
-          if (users.size === 0) {
+          
+          // Get current count of users in the room
+          const usersCount = users.size;
+          console.log(`After disconnect: Remaining users in ${roomId}: ${usersCount}`);
+          
+          // If room is empty and we have a canvas state, save it to the database
+          if (usersCount === 0 && canvasStates.has(roomId)) {
+            const canvasData = canvasStates.get(roomId);
+            if (canvasData) {
+              saveCanvasStateToDB(roomId, canvasData);
+              // Clear the canvas state from memory after saving
+              canvasStates.delete(roomId);
+            }
+            
+            // Remove the room from active users tracking
             canvasActiveUsers.delete(roomId);
+          } else {
+            // Notify others that this user left
+            io.to(roomId).emit("canvas:userLeft", userId);
           }
-          io.to(roomId).emit("canvas:userLeft", userId);
         }
       });
       
@@ -230,6 +354,27 @@ export const initSocketServer = (server: HttpServer): void => {
   });
 
   console.log('Socket.IO server initialized successfully');
+  
+  // Setup periodic canvas sync to ensure we have the latest state in memory
+  setInterval(() => {
+    // For each active canvas room, request a sync from one of the users
+    canvasActiveUsers.forEach((users, roomId) => {
+      if (users.size > 0) {
+        // Get the first user in the room
+        const userId = Array.from(users)[0];
+        console.log(`Requesting periodic canvas sync for ${roomId} from user ${userId}`);
+        
+        // Find a socket for this user and request a sync
+        const sockets = Array.from(io.sockets.sockets.values());
+        for (const socket of sockets) {
+          if ((socket as any).user?.id === userId) {
+            socket.emit("canvas:requestSync", { userId });
+            break;
+          }
+        }
+      }
+    });
+  }, 60000); // Every minute
 };
 
 // Function to get the io instance

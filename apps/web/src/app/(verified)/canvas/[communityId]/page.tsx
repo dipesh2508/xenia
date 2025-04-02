@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/ui/tabs";
 import {
   Avatar,
   AvatarFallback,
@@ -11,7 +10,6 @@ import { useApi } from "@/hooks/useApi";
 import { useSocket } from "@/hooks/useSocket";
 import { toast } from "sonner";
 import { useUserDetails } from "@/hooks/useUserDetails";
-import { Button } from "@repo/ui/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
@@ -25,6 +23,7 @@ import CanvasToolbar from "@/components/canvas/CanvasToolbar";
 import DrawingCanvas from "@/components/canvas/DrawingCanvas";
 import ActiveUsers from "@/components/canvas/ActiveUsers";
 import { useCanvasApi } from "@/hooks/useCanvasApi";
+import TabsNavigation from "@/components/navigation/TabsNavigation";
 
 interface User {
   id: string;
@@ -44,12 +43,17 @@ interface Community {
   updatedAt: string;
 }
 
+interface Position {
+  x: number;
+  y: number;
+}
+
 interface CanvasUser {
   id: string;
   name: string;
   image: string | null;
   color: string;
-  mousePosition?: { x: number; y: number } | null;
+  mousePosition?: Position | null;
   lastActive: Date;
 }
 
@@ -70,6 +74,13 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
   const [roomId, setRoomId] = useState<string | undefined>(undefined);
   const [canvasId, setCanvasId] = useState<string | undefined>(undefined);
   const [shouldSaveCanvas, setShouldSaveCanvas] = useState<boolean>(false);
+  
+  // Add refs to track canvas state
+  const initialCanvasLoadedRef = useRef<boolean>(false);
+  const lastSaveTimeRef = useRef<number>(0);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const joinedUsersRef = useRef<Set<string>>(new Set());
+  const joinNotificationsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // Canvas API hooks
   const {
@@ -110,9 +121,39 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
     maxRetries: 3,
   });
 
+  // Function to debounce canvas saving
+  const debouncedSaveCanvas = () => {
+    // Clear any existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    
+    // Set a new timeout
+    saveTimeoutRef.current = setTimeout(() => {
+      setShouldSaveCanvas(true);
+    }, 2000); // Wait 2 seconds after the last drawing before saving
+  };
+
   // Canvas socket event handlers
   const handleUserJoined = (userData: CanvasUser) => {
     console.log("User joined:", userData);
+    
+    // Check if we've already processed this user join event recently
+    if (joinedUsersRef.current.has(userData.id)) {
+      console.log(`User ${userData.id} join event already processed, ignoring duplicate`);
+      return;
+    }
+    
+    // Add to the set of joined users
+    joinedUsersRef.current.add(userData.id);
+    
+    // Automatically remove from the set after a delay to allow future rejoin events
+    const timeoutId = setTimeout(() => {
+      joinedUsersRef.current.delete(userData.id);
+    }, 10000); // 10 seconds debounce
+
+    // Store the timeout to clear it if the component unmounts
+    joinNotificationsRef.current.set(userData.id, timeoutId);
     
     // Also broadcast our user info to the new user
     if (socket && isConnected && user && userData.id !== user.id) {
@@ -144,9 +185,12 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
       return [...prev, { ...userData, lastActive: new Date() }];
     });
     
-    toast.info(`${userData.name} joined the canvas`, {
-      duration: 3000,
-    });
+    // Only show toast for new users, not reconnects
+    if (userData.id !== user?.id) {
+      toast.info(`${userData.name} joined the canvas`, {
+        duration: 3000,
+      });
+    }
   };
 
   const handleUserLeft = (userId: string) => {
@@ -166,15 +210,69 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
   };
 
   const handleCanvasSync = (canvasDataUrl: string) => {
-    setCanvasData(canvasDataUrl);
+    console.log("Received canvas sync, data length:", canvasDataUrl?.length || 0);
+    
+    if (!canvasRef.current || !canvasReady) {
+      console.warn("Canvas not ready to apply sync");
+      return;
+    }
+    
+    try {
+      // Only apply canvas data if we have a valid URL
+      if (canvasDataUrl && canvasDataUrl.startsWith('data:image/')) {
+        const currentCanvas = canvasRef.current;
+        const ctx = currentCanvas.getContext('2d');
+        
+        // For the initial load or when we have no data yet, always apply the incoming data
+        if (!initialCanvasLoadedRef.current) {
+          console.log("Initial canvas load - applying full state");
+          
+          const img = new Image();
+          img.onload = () => {
+            ctx?.clearRect(0, 0, currentCanvas.width, currentCanvas.height);
+            ctx?.drawImage(img, 0, 0, currentCanvas.width / window.devicePixelRatio, currentCanvas.height / window.devicePixelRatio);
+            initialCanvasLoadedRef.current = true;
+          };
+          img.onerror = (error) => {
+            console.error("Error loading canvas image:", error);
+          };
+          img.src = canvasDataUrl;
+        } else {
+          // For subsequent syncs, only apply if it's different from our current state
+          // This helps prevent flickering from constant syncs
+          const currentDataUrl = currentCanvas.toDataURL('image/png');
+          
+          // Simple check: if incoming data is bigger than our current data + threshold
+          // or significantly different in size, apply it
+          const sizeDiff = Math.abs(canvasDataUrl.length - currentDataUrl.length);
+          const threshold = 100; // bytes tolerance
+          
+          if (canvasDataUrl.length > currentDataUrl.length + threshold || sizeDiff > 1000) {
+            console.log("Detected significant canvas state difference, applying sync");
+            
+            const img = new Image();
+            img.onload = () => {
+              ctx?.drawImage(img, 0, 0, currentCanvas.width / window.devicePixelRatio, currentCanvas.height / window.devicePixelRatio);
+            };
+            img.src = canvasDataUrl;
+          } else {
+            console.log("Canvas sync skipped - no significant difference detected");
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error processing canvas sync:", error);
+    }
   };
 
   // Get or create a canvas for this community
   useEffect(() => {
     if (communityId && user) {
+      console.log("Getting or creating community canvas for:", communityId);
       getOrCreateCommunityCanvas(communityId)
         .then((canvas) => {
           if (canvas) {
+            console.log("Canvas retrieved:", canvas.id, "Has snapshot:", !!canvas.snapshot);
             setCanvasId(canvas.id);
             if (canvas.snapshot) {
               setCanvasData(canvas.snapshot);
@@ -182,6 +280,7 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
           }
         })
         .catch((error) => {
+          console.error("Failed to load canvas:", error);
           toast.error("Failed to load canvas", {
             description: error.message,
           });
@@ -191,29 +290,38 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
 
   // Save canvas periodically or when a significant change occurs
   useEffect(() => {
-    if (!canvasId || !canvasRef.current || !canvasReady || !shouldSaveCanvas) return;
+    if (!canvasId || !canvasRef.current || !canvasReady || !shouldSaveCanvas || !socket || !isConnected || !roomId) return;
 
     const saveCanvas = () => {
       const canvas = canvasRef.current;
       if (canvas) {
+        console.log("Saving canvas state to server memory...");
         const dataUrl = canvas.toDataURL('image/png');
-        updateCanvasSnapshot(canvasId, dataUrl)
-          .then(() => {
-            console.log("Canvas saved successfully");
-            setShouldSaveCanvas(false);
-          })
-          .catch((error) => {
-            console.error("Failed to save canvas:", error);
-          });
+        
+        // Instead of saving to the database directly, send the canvas state through socket
+        // The server will keep it in memory and only save to DB when all users leave
+        socket.emit('canvas:provideSync', {
+          roomId,
+          canvasData: dataUrl
+        });
+        
+        // Reset the save flag
+        setShouldSaveCanvas(false);
       }
     };
 
     saveCanvas();
-  }, [canvasId, canvasReady, shouldSaveCanvas, updateCanvasSnapshot]);
+  }, [canvasId, canvasReady, shouldSaveCanvas, socket, isConnected, roomId]);
 
   // Handle drawing event (extended to trigger canvas saving)
   const handleDrawingEvent = (drawingData: any) => {
-    console.log("Received drawing event:", drawingData.type);
+    // Skip if it's our own drawing event (we already applied it locally)
+    if (drawingData.userId === user?.id) {
+      console.log("Skipping own drawing event");
+      return;
+    }
+    
+    console.log("Received drawing event:", drawingData.type, "from", drawingData.userId || "unknown");
     
     // Handle incoming drawing events and apply to canvas
     if (canvasRef.current && canvasReady) {
@@ -222,12 +330,18 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
         // Apply the drawing event to canvas
         applyDrawingEvent(ctx, drawingData);
         
-        // If it's a clear event or we've accumulated enough drawing events, save the canvas
+        // For significant drawing events, we'll mark for a delayed save
+        // to give time for multiple drawing events to batch
         if (drawingData.type === "clear" || 
             drawingData.type === "circle" || 
             drawingData.type === "rectangle" || 
             drawingData.type === "line") {
-          setShouldSaveCanvas(true);
+          // Use debounced save for all drawing events
+          debouncedSaveCanvas();
+        } else if (drawingData.type === "pencil") {
+          // For pencil strokes, we also use debounced saving 
+          // but with a possibly longer delay due to higher frequency
+          debouncedSaveCanvas();
         }
       }
     }
@@ -237,14 +351,14 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
     ctx: CanvasRenderingContext2D,
     drawingData: any
   ) => {
-    const { type, color, width, ...rest } = drawingData;
+    const { type, color, width, strokeWidth, ...rest } = drawingData;
     
     // Save current context state
     ctx.save();
     
     // Set drawing styles
     ctx.strokeStyle = color;
-    ctx.lineWidth = width;
+    ctx.lineWidth = width || strokeWidth || 2; // Handle both width and strokeWidth for compatibility
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     
@@ -312,26 +426,25 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
   useEffect(() => {
     if (!socket || !isConnected || !roomId || !user) return;
     
-    // Send a heartbeat every 10 seconds to keep our presence active
-    const heartbeatInterval = setInterval(() => {
-      // Find our color from activeUsers or generate a new one
-      const myUser = activeUsers.find(u => u.id === user.id);
-      
-      if (myUser) {
-        socket.emit("canvas:join", {
-          roomId,
-          user: {
-            id: user.id,
-            name: user.name,
-            image: user.image,
-            color: myUser.color,
-          },
-        });
-      }
-    }, 10000);
+    console.log("Setting up canvas presence heartbeat");
     
-    return () => clearInterval(heartbeatInterval);
-  }, [socket, isConnected, roomId, user, activeUsers]);
+    // Send a heartbeat every 15 seconds to keep our presence active
+    const heartbeatInterval = setInterval(() => {
+      // Send the activity heartbeat instead of triggering a join event
+      socket.emit("canvas:userActivity", {
+        roomId,
+        userId: user.id,
+        timestamp: new Date().toISOString()
+      });
+      
+      console.log("Sent canvas presence heartbeat");
+    }, 15000); // Every 15 seconds
+    
+    return () => {
+      console.log("Clearing canvas presence heartbeat");
+      clearInterval(heartbeatInterval);
+    };
+  }, [socket, isConnected, roomId, user]);
 
   // Set up socket event listeners for canvas
   useEffect(() => {
@@ -377,7 +490,7 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
         return [...prev, {
           id: user.id,
           name: user.name,
-          image: user.image,
+          image: user.image || null,
           color: randomColor,
           lastActive: new Date()
         }];
@@ -389,7 +502,7 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
         user: {
           id: user.id,
           name: user.name,
-          image: user.image,
+          image: user.image || null,
           color: randomColor,
         },
       });
@@ -406,17 +519,61 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
 
   // Restore canvas when data is received
   useEffect(() => {
-    if (canvasData && canvasRef.current && canvasReady) {
-      const img = new Image();
-      img.onload = () => {
-        const ctx = canvasRef.current?.getContext("2d");
-        if (ctx) {
+    if (!canvasData || !canvasRef.current || !canvasReady) return;
+    
+    console.log("Canvas data received, loading image...");
+    
+    const img = new Image();
+    img.onload = () => {
+      console.log("Canvas image loaded");
+      const ctx = canvasRef.current?.getContext("2d");
+      if (!ctx || !canvasRef.current) return;
+      
+      // For initial load, always apply the full canvas state
+      if (!initialCanvasLoadedRef.current) {
+        console.log("Applying initial canvas data");
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.drawImage(img, 0, 0);
+        initialCanvasLoadedRef.current = true;
+        console.log("Initial canvas state applied successfully");
+      } else {
+        // For subsequent canvas sync events, we need to be careful not to override
+        // our own drawings
+        try {
+          // For sync events after initial load, compare the data more carefully
+          // If the incoming state is significantly different (more content), apply it
+          const currentCanvas = canvasRef.current;
+          const currentDataUrl = currentCanvas.toDataURL('image/png');
+          const currentData = currentDataUrl.length;
+          const incomingData = canvasData.length;
+          
+          // If incoming data is larger (has more drawings), apply it
+          if (incomingData > currentData + 100) {
+            console.log("Applying canvas sync (more content in sync)");
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.drawImage(img, 0, 0);
+          } else if (Math.abs(currentData - incomingData) > 100) {
+            // For significant differences, apply the update
+            console.log("Applying canvas sync (significant difference)");
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.drawImage(img, 0, 0);
+          } else {
+            console.log("Ignoring canvas sync (similar sizes)");
+          }
+        } catch (error) {
+          console.error("Error during canvas sync comparison:", error);
+          // Fallback to just applying the update
           ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
           ctx.drawImage(img, 0, 0);
         }
-      };
-      img.src = canvasData;
-    }
+      }
+    };
+    
+    img.onerror = (err) => {
+      console.error("Error loading canvas image:", err);
+    };
+    
+    img.src = canvasData;
   }, [canvasData, canvasReady]);
 
   // Set up canvas sync function
@@ -442,17 +599,29 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
     };
   }, [socket, isConnected, canvasReady, roomId]);
 
-  // Handle disconnection - let others know when we leave
+  // Handle disconnection - let others know when we leave and sync canvas one last time
   useEffect(() => {
     return () => {
-      if (socket && isConnected && roomId && user) {
+      if (socket && isConnected && roomId && user && canvasRef.current && canvasReady) {
+        // Send the final canvas state to the server before leaving
+        const dataUrl = canvasRef.current.toDataURL('image/png');
+        socket.emit('canvas:provideSync', {
+          roomId,
+          canvasData: dataUrl
+        });
+        
+        console.log("Synced canvas state before leaving");
+        
+        // Then leave the room
         socket.emit('canvas:leave', {
           roomId,
           userId: user.id
         });
+        
+        console.log("Left canvas room:", roomId);
       }
     };
-  }, [socket, isConnected, roomId, user]);
+  }, [socket, isConnected, roomId, user, canvasReady]);
 
   // Add debouncing for mouse movement to reduce network traffic
   const lastEmitTimeRef = useRef<number>(0);
@@ -481,32 +650,32 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
   // Send drawing event to server (extended to trigger canvas saving)
   const sendDrawingEvent = (drawingData: any) => {
     if (socket && isConnected && roomId) {
-      socket.emit("canvas:draw", {
-        roomId,
+      console.log("Sending drawing event:", drawingData.type);
+      
+      // Add user ID to the drawing data to track who is drawing
+      const eventWithUser = {
         ...drawingData,
-      });
+        userId: user?.id,
+        roomId,
+      };
+      
+      socket.emit("canvas:draw", eventWithUser);
 
-      // For certain operations, mark the canvas for saving
-      if (drawingData.type === "clear" || drawingData.type === "circle" || 
-          drawingData.type === "rectangle" || drawingData.type === "line") {
+      // For certain operations, mark the canvas for immediate saving
+      if (drawingData.type === "clear" || 
+          drawingData.type === "circle" || 
+          drawingData.type === "rectangle" || 
+          drawingData.type === "line") {
         setShouldSaveCanvas(true);
+      } else if (drawingData.type === "pencil") {
+        // For pencil strokes, use debounced saving
+        debouncedSaveCanvas();
       }
     }
   };
 
   // Check if canvas is full
   const isCanvasFull = activeUsers.length >= MAX_CANVAS_USERS;
-
-  // Set up an interval to save the canvas periodically
-  useEffect(() => {
-    if (!canvasId || !canvasReady) return;
-
-    const saveInterval = setInterval(() => {
-      setShouldSaveCanvas(true);
-    }, 30000); // Save every 30 seconds if there are changes
-
-    return () => clearInterval(saveInterval);
-  }, [canvasId, canvasReady]);
 
   // Function to download the canvas as an image
   const handleDownloadCanvas = () => {
@@ -566,6 +735,21 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
     };
   }, [socket, isConnected, roomId, user]);
 
+  // Clean up timeouts on unmount
+  useEffect(() => {
+    return () => {
+      // Clear save timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      // Clear all join notification timeouts
+      joinNotificationsRef.current.forEach((timeout) => {
+        clearTimeout(timeout);
+      });
+    };
+  }, []);
+
   return (
     <div className="h-full">
       <div className="bg-chatroom-background rounded-tr-xl rounded-br-xl flex-1 h-full flex flex-col">
@@ -618,13 +802,8 @@ const CanvasPage = ({ params }: { params: { communityId: string } }) => {
               </Tooltip>
             </TooltipProvider>
 
-            <Tabs defaultValue="canvas">
-              <TabsList className="bg-chatroom-accent/10">
-                <TabsTrigger value="message">Message</TabsTrigger>
-                <TabsTrigger value="canvas">Canvas</TabsTrigger>
-                <TabsTrigger value="Docs">Doc Room</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {/* Replace the old Tabs with the new TabsNavigation component */}
+            <TabsNavigation defaultValue="canvas" communityId={communityId} />
           </div>
         </header>
 

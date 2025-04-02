@@ -11,7 +11,7 @@ interface CanvasUser {
   name: string;
   image: string | null;
   color: string;
-  mousePosition?: Position;
+  mousePosition?: Position | null;
   lastActive: Date;
 }
 
@@ -31,6 +31,8 @@ const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(
     const [isDrawing, setIsDrawing] = useState(false);
     const [startPosition, setStartPosition] = useState<Position | null>(null);
     const [tempCanvas, setTempCanvas] = useState<HTMLCanvasElement | null>(null);
+    // Add a ref for storing the original canvas state before drawing shapes
+    const backupCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
     // Forward the canvas ref to the parent component
     useImperativeHandle(ref, () => canvasRef.current!);
@@ -146,27 +148,37 @@ const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(
           const dy = currentPosition.y - startPosition.y;
           const radius = Math.sqrt(dx * dx + dy * dy);
           tempCtx.beginPath();
-          tempCtx.arc(startPosition.x, startPosition.y, radius, 0, Math.PI * 2);
+          tempCtx.arc(startPosition.x, startPosition.y, radius, 0, 2 * Math.PI);
           tempCtx.stroke();
           break;
         default:
           break;
       }
 
-      // Draw temp canvas on main canvas
-      const ctx = canvasRef.current?.getContext("2d");
-      if (ctx) {
-        const mainCanvas = canvasRef.current;
-        // Create a backup of the current canvas
-        const backupCanvas = document.createElement('canvas');
-        backupCanvas.width = mainCanvas!.width;
-        backupCanvas.height = mainCanvas!.height;
-        const backupCtx = backupCanvas.getContext('2d');
-        backupCtx?.drawImage(mainCanvas!, 0, 0);
+      // Get the main canvas and its context
+      const mainCanvas = canvasRef.current;
+      const ctx = mainCanvas?.getContext("2d");
+      
+      if (ctx && mainCanvas) {
+        // Store the current main canvas content for redrawing
+        if (!backupCanvasRef.current) {
+          backupCanvasRef.current = document.createElement('canvas');
+          backupCanvasRef.current.width = mainCanvas.width;
+          backupCanvasRef.current.height = mainCanvas.height;
+          
+          // Make initial backup of main canvas
+          const backupCtx = backupCanvasRef.current.getContext('2d');
+          backupCtx?.drawImage(mainCanvas, 0, 0);
+        }
         
-        // Now clear and redraw
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.drawImage(backupCanvas, 0, 0);
+        // Redraw the main canvas in this sequence:
+        // 1. Clear the canvas
+        ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+        
+        // 2. Draw the original content from backup
+        ctx.drawImage(backupCanvasRef.current, 0, 0);
+        
+        // 3. Draw the temporary shape on top
         ctx.drawImage(tempCanvas, 0, 0);
       }
     };
@@ -175,10 +187,56 @@ const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(
     const completeShape = (endPosition: Position) => {
       if (!startPosition) return;
 
+      // Get the final drawing data for the shape type
+      let drawingData: any = {
+        type: selectedTool,
+        color: selectedColor,
+        width: strokeWidth,
+      };
+
+      switch (selectedTool) {
+        case "line":
+          drawingData = {
+            ...drawingData,
+            start: startPosition,
+            end: endPosition,
+          };
+          break;
+        case "rectangle":
+          const rectWidth = endPosition.x - startPosition.x;
+          const height = endPosition.y - startPosition.y;
+          drawingData = {
+            ...drawingData,
+            startPoint: startPosition,
+            width: rectWidth,
+            height,
+          };
+          break;
+        case "circle":
+          const dx = endPosition.x - startPosition.x;
+          const dy = endPosition.y - startPosition.y;
+          const radius = Math.sqrt(dx * dx + dy * dy);
+          drawingData = {
+            ...drawingData,
+            center: startPosition,
+            radius,
+          };
+          break;
+        default:
+          return; // Invalid tool type
+      }
+
+      // Apply the final shape to the canvas using the backup and temp canvas
       const ctx = canvasRef.current?.getContext("2d");
       if (!ctx) return;
 
-      // Apply the final shape directly to canvas
+      // We first restore the original canvas from the backup
+      if (backupCanvasRef.current) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.drawImage(backupCanvasRef.current, 0, 0);
+      }
+      
+      // Then draw the final shape directly on the canvas
       ctx.strokeStyle = selectedColor;
       ctx.lineWidth = strokeWidth;
       ctx.lineCap = "round";
@@ -190,48 +248,24 @@ const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(
           ctx.moveTo(startPosition.x, startPosition.y);
           ctx.lineTo(endPosition.x, endPosition.y);
           ctx.stroke();
-          
-          onDrawingEvent({
-            type: "line",
-            start: startPosition,
-            end: endPosition,
-            color: selectedColor,
-            width: strokeWidth,
-          });
           break;
         case "rectangle":
           const rectWidth = endPosition.x - startPosition.x;
           const height = endPosition.y - startPosition.y;
           ctx.strokeRect(startPosition.x, startPosition.y, rectWidth, height);
-          
-          onDrawingEvent({
-            type: "rectangle",
-            startPoint: startPosition,
-            width: rectWidth,
-            height,
-            color: selectedColor,
-            strokeWidth: strokeWidth,
-          });
           break;
         case "circle":
           const dx = endPosition.x - startPosition.x;
           const dy = endPosition.y - startPosition.y;
           const radius = Math.sqrt(dx * dx + dy * dy);
           ctx.beginPath();
-          ctx.arc(startPosition.x, startPosition.y, radius, 0, Math.PI * 2);
+          ctx.arc(startPosition.x, startPosition.y, radius, 0, 2 * Math.PI);
           ctx.stroke();
-          
-          onDrawingEvent({
-            type: "circle",
-            center: startPosition,
-            radius,
-            color: selectedColor,
-            width: strokeWidth,
-          });
-          break;
-        default:
           break;
       }
+      
+      // Send the drawing event to other users
+      onDrawingEvent(drawingData);
     };
 
     // Handle mouse down event
@@ -250,6 +284,16 @@ const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(
       if (selectedTool === "pencil") {
         setIsDrawing(true);
       } else if (["line", "rectangle", "circle"].includes(selectedTool)) {
+        // Create backup of current canvas state before we start drawing a shape
+        if (canvasRef.current) {
+          backupCanvasRef.current = document.createElement('canvas');
+          backupCanvasRef.current.width = canvasRef.current.width;
+          backupCanvasRef.current.height = canvasRef.current.height;
+          
+          const backupCtx = backupCanvasRef.current.getContext('2d');
+          backupCtx?.drawImage(canvasRef.current, 0, 0);
+        }
+        
         setIsDrawing(true);
       }
     };
@@ -267,7 +311,20 @@ const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(
 
       if (isDrawing) {
         if (selectedTool === "pencil" && startPosition) {
-          // For pencil, draw a line segment and update start position
+          // For pencil, draw a line segment directly on the canvas
+          const ctx = canvasRef.current?.getContext("2d");
+          if (ctx) {
+            ctx.beginPath();
+            ctx.moveTo(startPosition.x, startPosition.y);
+            ctx.lineTo(currentPosition.x, currentPosition.y);
+            ctx.strokeStyle = selectedColor;
+            ctx.lineWidth = strokeWidth;
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.stroke();
+          }
+          
+          // Broadcast the drawing event
           onDrawingEvent({
             type: "pencil",
             from: startPosition,
@@ -275,6 +332,7 @@ const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(
             color: selectedColor,
             width: strokeWidth,
           });
+          
           setStartPosition(currentPosition);
         } else if (["line", "rectangle", "circle"].includes(selectedTool)) {
           // For shapes, draw on temporary canvas
@@ -296,6 +354,8 @@ const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(
 
       if (["line", "rectangle", "circle"].includes(selectedTool)) {
         completeShape(currentPosition);
+        // Clear the backup canvas reference after completing the shape
+        backupCanvasRef.current = null;
       }
 
       setIsDrawing(false);
@@ -305,6 +365,14 @@ const DrawingCanvas = forwardRef<HTMLCanvasElement, DrawingCanvasProps>(
     // Handle mouse leave event
     const handleMouseLeave = () => {
       if (isDrawing && ["line", "rectangle", "circle"].includes(selectedTool)) {
+        // If user leaves the canvas while drawing a shape, restore original canvas
+        if (backupCanvasRef.current && canvasRef.current) {
+          const ctx = canvasRef.current.getContext("2d");
+          ctx?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+          ctx?.drawImage(backupCanvasRef.current, 0, 0);
+          backupCanvasRef.current = null;
+        }
+        
         setIsDrawing(false);
         setStartPosition(null);
       }

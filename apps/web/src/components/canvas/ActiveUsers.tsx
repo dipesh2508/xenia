@@ -8,7 +8,7 @@ interface CanvasUser {
   name: string;
   image: string | null;
   color: string;
-  mousePosition?: { x: number; y: number };
+  mousePosition?: { x: number; y: number } | null;
   lastActive: Date;
 }
 
