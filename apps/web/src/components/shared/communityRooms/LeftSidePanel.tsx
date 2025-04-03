@@ -11,7 +11,13 @@ import {
   SidebarGroup,
   SidebarGroupContent,
 } from "@repo/ui/components/ui/sidebar";
-import { MessageCircle, Globe, MessageSquareDiff, LogOut } from "lucide-react";
+import {
+  MessageCircle,
+  Globe,
+  MessageSquareDiff,
+  LogOut,
+  Files,
+} from "lucide-react";
 import Image from "next/image";
 import Logo from "@/assets/logoXeniaShortLightBrown.png";
 import Link from "next/link";
@@ -52,6 +58,12 @@ const LeftSidePanelTop = [
     ariaLabel: "Chat Room",
   },
   {
+    id: "docroom",
+    href: "/doc-room", // Updated to point to the docs directory
+    icon: Files,
+    ariaLabel: "Doc Room",
+  },
+  {
     id: "createCommunity",
     href: "/create-community",
     icon: MessageSquareDiff,
@@ -60,7 +72,7 @@ const LeftSidePanelTop = [
 ];
 
 const LeftSidePanel = () => {
-  const [isSelected, setIsSelected] = useState<string>("chatting");
+  const [isSelected, setIsSelected] = useState<string>("chatroom");
   const router = useRouter();
 
   const { mutate } = useApi("/user/logout", {

@@ -62,7 +62,7 @@ const SignUp = () => {
       toast.success(`Welcome ${data.name}!`, {
         description: "Successfull Signup",
       });
-      router.push("/explore");
+      router.push("/chat-room");
     },
     onError: (error) => {
       toast.error(error.message);

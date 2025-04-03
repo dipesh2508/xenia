@@ -67,7 +67,7 @@ const Navbar = () => {
 
       // Clear previous timeout and set a new one
       clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => setIsScrolling(false), 200); // Adjust delay as needed
+      scrollTimeout = setTimeout(() => setIsScrolling(false), 500); // Increased to 500ms for slower transition
     };
 
     window.addEventListener("scroll", handleScroll);
@@ -80,11 +80,14 @@ const Navbar = () => {
   return (
     <div
       className={cn(
-        "sticky top-0 z-50 transition-colors duration-500 ease-linear",
+        "sticky top-0 z-50 transition-all duration-1000 ease-in-out", // Increased duration to 1000ms
         isScrolling
-          ? "bg-gradient-to-b from-background to-white/30"
+          ? "bg-gradient-to-b from-background from-10% via-white/80 via-50% to-white/30 to-90%" // Adjusted gradient stops for top-to-bottom flow
           : "bg-white"
       )}
+      style={{
+        transitionTimingFunction: "cubic-bezier(0.25, 0.1, 0.25, 1)", // Adjusted curve for smoother flow
+      }}
     >
       <MotionDiv
         variants={containerVariants}
