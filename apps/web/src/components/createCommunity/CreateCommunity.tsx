@@ -14,7 +14,7 @@ import {
   FormMessage,
 } from "@repo/ui/components/ui/form";
 import { Input } from "@repo/ui/components/ui/input";
-import { Card, CardContent, CardHeader } from "@repo/ui/components/ui/card";
+import { Card, CardContent } from "@repo/ui/components/ui/card";
 import { FaSpinner } from "react-icons/fa6";
 import { useApi } from "@/hooks/useApi";
 import { useRouter } from "next/navigation";

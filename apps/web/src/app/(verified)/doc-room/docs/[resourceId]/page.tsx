@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { useUserDetails } from "@/hooks/useUserDetails";
 import { Button } from "@repo/ui/components/ui/button";
 import ResourceBubble from "@/components/chatRoom/ResourceBubble";
+import SendDocs from "@/components/chatRoom/SendDoc";
 
 interface Message {
   id: string;
@@ -203,17 +204,17 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
     }
   );
 
-  const { mutate: sendMessageMutation, isLoading: isSendingMessage } = useApi(
-    "/resources",
-    {
-      method: "POST",
-      onError: (error) => {
-        toast.error("Failed to send message", {
-          description: error.message,
-        });
-      },
-    }
-  );
+  // const { mutate: sendMessageMutation, isLoading: isSendingMessage } = useApi(
+  //   "/resources",
+  //   {
+  //     method: "POST",
+  //     onError: (error) => {
+  //       toast.error("Failed to send message", {
+  //         description: error.message,
+  //       });
+  //     },
+  //   }
+  // );
 
   //  // Handle new message event
   const handleNewMessage = (message: Resource) => {
@@ -235,7 +236,7 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
   // Use the custom useSocket hook
   const { isConnected, connectionStatus, retryCount, maxRetries, connect } =
     useSocket({
-      roomId: community?.resources?.[0]?.id,
+      roomId: resourceId,
       onNewMessage: handleNewMessage,
       onMessageUpdated: handleMessageUpdated,
       onMessageDeleted: handleMessageDeleted,
@@ -252,24 +253,24 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
     }
   }, [messages, isNewMessage, isInitialLoad]);
 
-  // Send message function
-  const sendMessage = async (content: string) => {
-    if (!content.trim() || !community?.resources?.[0]?.id) return;
+  // // Send message function
+  // const sendMessage = async (content: string) => {
+  //   if (!content.trim() || !community?.resources?.[0]?.id) return;
 
-    const chatId = community.resources[0].id;
+  //   const chatId = community.resources[0].id;
 
-    try {
-      await sendMessageMutation({
-        body: {
-          content,
-          chatId,
-        },
-      });
-    } catch (error) {
-      console.error("Error sending message:", error);
-      // Error is already handled by the useApi hook
-    }
-  };
+  //   try {
+  //     await sendMessageMutation({
+  //       body: {
+  //         content,
+  //         chatId,
+  //       },
+  //     });
+  //   } catch (error) {
+  //     console.error("Error sending message:", error);
+  //     // Error is already handled by the useApi hook
+  //   }
+  // };
   return (
     <div className="h-full">
       <div className="bg-chatroom-background rounded-tr-xl rounded-br-xl flex-1 h-full flex flex-col">
@@ -350,11 +351,10 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
           </div>
         </div>
 
-        <SendMessage
-          onSendMessage={sendMessage}
+        <SendDocs
           isConnected={isConnected}
-          disabled={!community?.resources?.[0]?.id || isSendingMessage}
-          room="docs"
+          disabled={!community?.resources?.[0]?.id}
+          communityId={resourceId}
         />
       </div>
     </div>
