@@ -7,8 +7,8 @@ export const createResource = async (req: any, res: Response): Promise<void> => 
     const { title, communityId } = req.body;
     const userId = req.user.id;
 
-    if (!title || !communityId) {
-      res.status(400).json({ message: "Title and community ID are required" });
+    if (!communityId) {
+      res.status(400).json({ message: "Community ID are required" });
       return;
     }
 
@@ -33,7 +33,7 @@ export const createResource = async (req: any, res: Response): Promise<void> => 
     // Create the resource
     const resource = await prisma.resource.create({
       data: {
-        title,
+        ...(title && { title }),
         ...(req.file?.path && { content: req.file.path }),
         ownerId: userId,
         communityId
