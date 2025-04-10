@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@repo/ui/components/ui/card";
 
 const SkeletonExploreCard = () => {
   return (
-    <Card className="rounded-3xl text-white text-center relative shadow-md shadow-primary-1/50">
+    <Card className="rounded-3xl text-white text-center relative shadow-md shadow-primary-1/50 h-96">
       <CardHeader className="p-0 relative">
         {/* Skeleton for image */}
         <div className="w-full h-[200px] bg-gray-200 rounded-tr-xl rounded-tl-xl animate-pulse" />

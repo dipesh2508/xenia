@@ -7,8 +7,13 @@ export const createResource = async (req: any, res: Response): Promise<void> => 
     const { title, communityId } = req.body;
     const userId = req.user.id;
 
-    if (!title || !communityId) {
-      res.status(400).json({ message: "Title and community ID are required" });
+    if (!communityId) {
+      res.status(400).json({ message: "Community ID is required" });
+      return;
+    }
+
+    if (!req.file) {
+      res.status(400).json({ message: "File is required" });
       return;
     }
 
@@ -30,11 +35,14 @@ export const createResource = async (req: any, res: Response): Promise<void> => 
       return;
     }
 
+    // Generate a default title if not provided
+    const defaultTitle = title || '';
+
     // Create the resource
     const resource = await prisma.resource.create({
       data: {
-        title,
-        ...(req.file?.path && { content: req.file.path }),
+        title: defaultTitle, // Always provide a title now
+        content: req.file.path, // Assuming req.file always exists from validation above
         ownerId: userId,
         communityId
       },
@@ -189,11 +197,14 @@ export const updateResource = async (req: any, res: Response): Promise<void> => 
       return;
     }
 
+    // Generate default title for update if not provided
+    const updatedTitle = title !== undefined ? title : resource.title;
+
     // Update the resource
     const updatedResource = await prisma.resource.update({
       where: { id },
       data: {
-        ...(title && { title }),
+        title: updatedTitle,
         ...(content && { content })
       },
       include: {

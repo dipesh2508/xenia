@@ -175,19 +175,14 @@ const Page = ({ params }: { params: { chatId: string } }) => {
   };
 
   // Use the custom useSocket hook
-  const {
-    isConnected,
-    connectionStatus,
-    retryCount,
-    maxRetries,
-    connect
-  } = useSocket({
-    roomId: community?.chats?.[0]?.id,
-    onNewMessage: handleNewMessage,
-    onMessageUpdated: handleMessageUpdated,
-    onMessageDeleted: handleMessageDeleted,
-    maxRetries: 3
-  });
+  const { isConnected, connectionStatus, retryCount, maxRetries, connect } =
+    useSocket({
+      roomId: community?.chats?.[0]?.id,
+      onNewMessage: handleNewMessage,
+      onMessageUpdated: handleMessageUpdated,
+      onMessageDeleted: handleMessageDeleted,
+      maxRetries: 3,
+    });
 
   // Update scroll behavior to handle both initial load and new messages
   useEffect(() => {
@@ -248,7 +243,7 @@ const Page = ({ params }: { params: { chatId: string } }) => {
               maxRetries={maxRetries}
               onRetry={connect}
             />
-          
+
             <Tabs defaultValue="message">
               <TabsList className="bg-chatroom-accent/10">
                 <TabsTrigger value="message">Message</TabsTrigger>
@@ -312,5 +307,3 @@ const Page = ({ params }: { params: { chatId: string } }) => {
 };
 
 export default Page;
-
-

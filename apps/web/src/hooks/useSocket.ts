@@ -30,6 +30,10 @@ interface UseSocketOptions {
   onMessageUpdated?: (message: any) => void;
   onMessageDeleted?: (data: { id: string }) => void;
   maxRetries?: number;
+  // Add support for resource-specific events
+  onNewResource?: (resource: any) => void;
+  onResourceUpdated?: (resource: any) => void;
+  onResourceDeleted?: (data: { id: string }) => void;
 }
 
 interface UseSocketReturn {
@@ -50,7 +54,11 @@ export const useSocket = ({
   onNewMessage,
   onMessageUpdated,
   onMessageDeleted,
-  maxRetries = 3
+  maxRetries = 3,
+  // Add the new handlers with defaults
+  onNewResource,
+  onResourceUpdated,
+  onResourceDeleted
 }: UseSocketOptions = {}): UseSocketReturn => {
   const [socket, setSocket] = useState<Socket | null>(globalSocketInstance);
   const [isConnected, setIsConnected] = useState(!!globalSocketInstance?.connected);
@@ -81,6 +89,10 @@ export const useSocket = ({
     socketInstance.off("newMessage");
     socketInstance.off("messageUpdated");
     socketInstance.off("messageDeleted");
+    // Add resource-specific event listeners cleanup - match backend event names
+    socketInstance.off("resource:create");
+    socketInstance.off("resource:update");
+    socketInstance.off("resource:delete");
     
     // Set up new listeners
     socketInstance.on("connect", () => {
@@ -160,8 +172,21 @@ export const useSocket = ({
       socketInstance.on("messageDeleted", onMessageDeleted);
     }
     
+    // Add resource-specific event handlers with correct event names
+    if (onNewResource) {
+      socketInstance.on("resource:create", onNewResource);
+    }
+
+    if (onResourceUpdated) {
+      socketInstance.on("resource:update", onResourceUpdated);
+    }
+
+    if (onResourceDeleted) {
+      socketInstance.on("resource:delete", onResourceDeleted);
+    }
+    
     return socketInstance;
-  }, [maxRetries, onNewMessage, onMessageUpdated, onMessageDeleted]);
+  }, [maxRetries, onNewMessage, onMessageUpdated, onMessageDeleted, onNewResource, onResourceUpdated, onResourceDeleted]);
 
   const cleanupRoomConnection = useCallback((socketInstance: Socket | null) => {
     if (!socketInstance || !roomIdRef.current) return;
@@ -386,4 +411,4 @@ export const useSocket = ({
     connect: manuallyRetry,
     disconnect: manuallyDisconnect
   };
-}; 
+};

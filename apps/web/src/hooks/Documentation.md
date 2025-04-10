@@ -85,7 +85,7 @@ const handleSubmit = async () => {
 
 ## useSocket
 
-A hook for managing WebSocket connections with automatic room management and reconnection logic.
+A hook for managing WebSocket connections with automatic room management, reconnection logic, and support for both chat messages and resources.
 
 ### Import
 
@@ -101,10 +101,18 @@ import { useSocket } from '@/hooks/useSocket';
 
 ```typescript
 interface UseSocketOptions {
-  roomId?: string; // ID of the room to join
-  onNewMessage?: (message: any) => void; // Handler for new messages
+  roomId?: string; // ID of the room to join (use format 'community:id' for resource rooms)
+  
+  // Chat message event handlers
+  onNewMessage?: (message: any) => void; // Handler for new chat messages
   onMessageUpdated?: (message: any) => void; // Handler for updated messages
   onMessageDeleted?: (data: { id: string }) => void; // Handler for deleted messages
+  
+  // Resource event handlers
+  onNewResource?: (resource: any) => void; // Handler for new resources
+  onResourceUpdated?: (resource: any) => void; // Handler for updated resources
+  onResourceDeleted?: (data: { id: string }) => void; // Handler for deleted resources
+  
   maxRetries?: number; // Maximum number of reconnection attempts
 }
 ```
@@ -126,12 +134,9 @@ interface UseSocketOptions {
 ### Usage Example
 
 ```typescript
-// Basic usage
-const { socket, isConnected, connectionStatus } = useSocket();
-
-// With room and event handlers
-const { socket, connectionStatus } = useSocket({
-  roomId: 'chat-room-123',
+// Basic usage for chat
+const { isConnected, connectionStatus } = useSocket({
+  roomId: chatRoomId,
   onNewMessage: (message) => {
     console.log('New message received:', message);
     setMessages(prev => [...prev, message]);
@@ -146,24 +151,70 @@ const { socket, connectionStatus } = useSocket({
   }
 });
 
-// Manual connection control
-const { connect, disconnect, connectionStatus } = useSocket();
+// Usage for resource/document rooms
+const { isConnected, connectionStatus } = useSocket({
+  roomId: `community:${resourceId}`, // Use the community:id format for resource rooms
+  onNewResource: (resource) => {
+    console.log('New resource received:', resource);
+    setResources(prev => [...prev, resource]);
+  },
+  onResourceUpdated: (updatedResource) => {
+    setResources(prev => prev.map(res => 
+      res.id === updatedResource.id ? updatedResource : res
+    ));
+  },
+  onResourceDeleted: ({ id }) => {
+    setResources(prev => prev.filter(res => res.id !== id));
+  }
+});
 
-const handleConnect = () => {
-  connect();
-};
+// Managing connection state in UI
+const { connectionStatus, retryCount, maxRetries, connect } = useSocket({
+  roomId: 'room-123'
+});
 
-const handleDisconnect = () => {
-  disconnect();
-};
+return (
+  <div>
+    <ConnectionStatus 
+      status={connectionStatus}
+      retryCount={retryCount}
+      maxRetries={maxRetries}
+      onRetry={connect}
+    />
+    
+    {/* Rest of your component */}
+  </div>
+);
 ```
+
+### Event Naming
+
+The hook listens for the following socket events:
+
+| Client Event Handler | Server Event Name   | Description                         |
+|---------------------|---------------------|-------------------------------------|
+| `onNewMessage`      | `newMessage`        | Fired when a new chat message arrives |
+| `onMessageUpdated`  | `messageUpdated`    | Fired when a chat message is updated |
+| `onMessageDeleted`  | `messageDeleted`    | Fired when a chat message is deleted |
+| `onNewResource`     | `resource:create`   | Fired when a new resource is created |
+| `onResourceUpdated` | `resource:update`   | Fired when a resource is updated     |
+| `onResourceDeleted` | `resource:delete`   | Fired when a resource is deleted     |
+
+### Room Naming Conventions
+
+For proper room management:
+
+- For chat rooms, use the chat ID as the room ID: `chatId`
+- For resource/document rooms, use the community ID with prefix: `community:${communityId}`
 
 ### Implementation Notes
 
-- The hook maintains a global socket instance to prevent multiple connections.
-- It automatically handles joining and leaving rooms when component mounts/unmounts.
-- Implements reconnection logic with configurable retry limits.
-- Provides detailed connection status for UI feedback.
+- The hook maintains a global socket instance to prevent multiple connections across components
+- It automatically handles joining and leaving rooms when component mounts/unmounts
+- Implements reconnection logic with configurable retry limits
+- Provides detailed connection status for UI feedback
+- Uses WebSocket transport for more efficient real-time communication
+- Supports multiple room types with appropriate event namespacing
 
 ## useUserDetails
 

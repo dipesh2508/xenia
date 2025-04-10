@@ -294,6 +294,7 @@ var isLoggedIn = async (req, res, next) => {
         message: "Unauthorized"
       });
     }
+    console.log("Decoded token:", decoded);
     try {
       const user = await prisma.user.findUnique({
         where: {
@@ -1258,8 +1259,12 @@ var createResource = async (req, res) => {
   try {
     const { title, communityId } = req.body;
     const userId = req.user.id;
-    if (!title || !communityId) {
-      res.status(400).json({ message: "Title and community ID are required" });
+    if (!communityId) {
+      res.status(400).json({ message: "Community ID is required" });
+      return;
+    }
+    if (!req.file) {
+      res.status(400).json({ message: "File is required" });
       return;
     }
     const community = await prisma.community.findUnique({
@@ -1275,10 +1280,13 @@ var createResource = async (req, res) => {
       res.status(403).json({ message: "You are not a member of this community" });
       return;
     }
+    const defaultTitle = title || "";
     const resource = await prisma.resource.create({
       data: {
-        title,
-        ...req.file?.path && { content: req.file.path },
+        title: defaultTitle,
+        // Always provide a title now
+        content: req.file.path,
+        // Assuming req.file always exists from validation above
         ownerId: userId,
         communityId
       },
@@ -1406,10 +1414,11 @@ var updateResource = async (req, res) => {
       res.status(403).json({ message: "You can only update your own resources" });
       return;
     }
+    const updatedTitle = title !== void 0 ? title : resource.title;
     const updatedResource = await prisma.resource.update({
       where: { id },
       data: {
-        ...title && { title },
+        title: updatedTitle,
         ...content && { content }
       },
       include: {

@@ -84,8 +84,8 @@ model Message {
 
 model Resource {
   id          String             @id @default(cuid())
-  title       String
-  content     String?
+  title       String?
+  content     String
   ownerId     String
   communityId String
   createdAt   DateTime           @default(now())
