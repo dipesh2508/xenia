@@ -34,6 +34,8 @@ export const isLoggedIn = async (
       });
     }
 
+    console.log("Decoded token:", decoded);
+
     try {
       const user = await prisma.user.findUnique({
         where: {
@@ -46,6 +48,7 @@ export const isLoggedIn = async (
           image: true,
         },
       });
+
 
       if (!user) {
         console.error("User not found in database");

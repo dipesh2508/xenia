@@ -98,6 +98,7 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { resourceId } = params;
   const [isNewMessage, setIsNewMessage] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -201,30 +202,35 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
     }
   );
 
-  // Handle new message event
-  const handleNewMessage = (message: Resource) => {
+  // Handle new resource event - update to use the correct event name from backend
+  const handleNewResource = (resource: Resource) => {
+    console.log("New resource received:", resource);
     setIsNewMessage(true);
-    setMessages((prev) => [...prev, message]);
+    setMessages((prev) => [...prev, resource]);
   };
-  // Handle updated message event
-  const handleMessageUpdated = (updatedMessage: Resource) => {
+
+  // Handle updated resource event
+  const handleResourceUpdated = (updatedResource: Resource) => {
+    console.log("Resource updated:", updatedResource);
     setMessages((prev) =>
-      prev.map((msg) => (msg.id === updatedMessage.id ? updatedMessage : msg))
+      prev.map((res) => (res.id === updatedResource.id ? updatedResource : res))
     );
   };
 
-  // Handle deleted message event
-  const handleMessageDeleted = ({ id }: { id: string }) => {
-    setMessages((prev) => prev.filter((msg) => msg.id !== id));
+  // Handle deleted resource event
+  const handleResourceDeleted = ({ id }: { id: string }) => {
+    console.log("Resource deleted:", id);
+    setMessages((prev) => prev.filter((res) => res.id !== id));
   };
 
-  // Use the custom useSocket hook
+  // Use the custom useSocket hook with the proper room ID and event handlers
+  // Update to use the correct event names from backend
   const { isConnected, connectionStatus, retryCount, maxRetries, connect } =
     useSocket({
-      roomId: resourceId,
-      onNewMessage: handleNewMessage,
-      onMessageUpdated: handleMessageUpdated,
-      onMessageDeleted: handleMessageDeleted,
+      roomId: `community:${resourceId}`,
+      onNewResource: handleNewResource,
+      onResourceUpdated: handleResourceUpdated,
+      onResourceDeleted: handleResourceDeleted,
       maxRetries: 3,
     });
 
@@ -266,15 +272,43 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
     }
   };
 
-  // Update scroll behavior to handle both initial load and new messages
+  // Enhanced scroll behavior to ensure complete visibility of new messages including images
   useEffect(() => {
     if (isNewMessage || isInitialLoad) {
-      messagesEndRef.current?.scrollIntoView({
-        behavior: isInitialLoad ? "auto" : "smooth",
-      });
+      // For initial load, scroll to bottom immediately
+      if (isInitialLoad) {
+        setTimeout(() => {
+          if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+          }
+        }, 100);
+      } else {
+        // For new messages, scroll with animation and additional padding to ensure full visibility
+        setTimeout(() => {
+          if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({
+              behavior: "smooth",
+              block: "end",
+            });
+            
+            // Add extra scroll to account for potential image height
+            if (messagesContainerRef.current) {
+              messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+            }
+          }
+        }, 100); // Small delay to allow image to load
+      }
       setIsInitialLoad(false);
     }
   }, [messages, isNewMessage, isInitialLoad]);
+
+  // Update when community data is loaded to reconnect socket with the proper ID
+  useEffect(() => {
+    if (data?.id && data.id !== resourceId) {
+      // If the loaded community ID is different from the resourceId, reconnect
+      connect();
+    }
+  }, [data?.id, resourceId, connect]);
 
   return (
     <div className="h-full">
@@ -319,8 +353,8 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
 
         {/* Chat area with flex-grow to take available space */}
         <div className="flex-1 overflow-hidden pt-8">
-          {/* Scrollable container */}
-          <div className="h-full overflow-y-auto">
+          {/* Scrollable container - add ref here */}
+          <div className="h-full overflow-y-auto" ref={messagesContainerRef}>
             {/* Message container */}
             <div className="flex flex-col justify-end min-h-full px-4">
               {hasMore && (
@@ -351,7 +385,7 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
                   />
                 ))}
               </div>
-              <div ref={messagesEndRef} />
+              <div ref={messagesEndRef} className="h-[10px]" />
             </div>
           </div>
         </div>

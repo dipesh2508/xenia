@@ -52,7 +52,15 @@ const SendDocs = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const onSubmit = async () => {
-    if ((!message.trim() && !selectedFile) || disabled || !isConnected) return;
+    // Check connection status first
+    if (!isConnected) {
+      toast.error("Not connected", {
+        description: "Please wait until connection is established.",
+      });
+      return;
+    }
+
+    if ((!message.trim() && !selectedFile) || disabled) return;
     if (!communityId) {
       toast.error("Community ID is required", {
         description: "Please provide a valid community ID.",
@@ -141,18 +149,18 @@ const SendDocs = ({
               variant="ghost"
               className="h-10 w-10 hover:bg-chatroom-accent/20 transition-all duration-200 rounded-full"
               onClick={triggerFileUpload}
-              disabled={disabled || !isConnected} // Disable upload button
+              disabled={disabled || !isConnected} // Make sure to properly disable when not connected
             >
               <FilePlus2 className="text-indigo-950 text-sm" />
             </Button>
 
             <Input
-              placeholder="Write a message..."
+              placeholder={isConnected ? "Write a message..." : "Connecting..."}
               className="min-h-12 max-h-32 resize-none bg-secondary-0 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 px-3 py-2.5 text-sm"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={disabled} // Disable input
+              disabled={disabled || !isConnected} // Disable input when not connected
             />
           </div>
 
