@@ -1258,8 +1258,8 @@ var createResource = async (req, res) => {
   try {
     const { title, communityId } = req.body;
     const userId = req.user.id;
-    if (!title || !communityId) {
-      res.status(400).json({ message: "Title and community ID are required" });
+    if (!communityId) {
+      res.status(400).json({ message: "Community ID are required" });
       return;
     }
     const community = await prisma.community.findUnique({
@@ -1277,7 +1277,7 @@ var createResource = async (req, res) => {
     }
     const resource = await prisma.resource.create({
       data: {
-        title,
+        ...title && { title },
         ...req.file?.path && { content: req.file.path },
         ownerId: userId,
         communityId

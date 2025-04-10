@@ -7,9 +7,6 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@repo/ui/components/ui/avatar";
-import MeChatBubble from "@/components/chatRoom/MeChatBubble";
-import RecieverChatBubble from "@/components/chatRoom/RecieverChatBubble";
-import SendMessage from "@/components/chatRoom/SendMessage";
 import ConnectionStatus from "@/components/chatRoom/ConnectionStatus";
 import { useApi } from "@/hooks/useApi";
 import { useSocket } from "@/hooks/useSocket";
@@ -73,7 +70,7 @@ interface Resource {
   updatedAt: string;
   ownerId: string;
   owner: Owner;
-  title: string;
+  title: string | null;
 }
 interface PaginationResponse {
   hasMore: boolean;
@@ -101,10 +98,10 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { user } = useUserDetails();
   const { resourceId } = params;
   const [isNewMessage, setIsNewMessage] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [resource, setResource] = useState<Resource | null>(null);
 
   const { data, error, isLoading } = useApi<Community>(
     `/communities/${resourceId}`,
@@ -204,19 +201,7 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
     }
   );
 
-  // const { mutate: sendMessageMutation, isLoading: isSendingMessage } = useApi(
-  //   "/resources",
-  //   {
-  //     method: "POST",
-  //     onError: (error) => {
-  //       toast.error("Failed to send message", {
-  //         description: error.message,
-  //       });
-  //     },
-  //   }
-  // );
-
-  //  // Handle new message event
+  // Handle new message event
   const handleNewMessage = (message: Resource) => {
     setIsNewMessage(true);
     setMessages((prev) => [...prev, message]);
@@ -243,6 +228,44 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
       maxRetries: 3,
     });
 
+  const { mutate: sendMessageMutation, isLoading: isSendingMessage } = useApi(
+    "/resources",
+    {
+      method: "POST",
+      onSuccess: (data) => {
+        toast.success("File sent successfully", {
+          description: "Your file has been uploaded and shared.",
+        });
+      },
+      onError: (error) => {
+        toast.error("Failed to send file", {
+          description: error.message,
+        });
+      },
+    }
+  );
+
+  const handleSend = async (
+    message: string,
+    selectedFile: File,
+    communityId: string
+  ) => {
+    try {
+      const formData = new FormData();
+      formData.append("title", message || "");
+      formData.append("communityId", communityId || "");
+      if (selectedFile) {
+        formData.append("file", selectedFile);
+      }
+
+      await sendMessageMutation({
+        body: formData,
+      });
+    } catch (error) {
+      console.error("Error sending file:", error);
+    }
+  };
+
   // Update scroll behavior to handle both initial load and new messages
   useEffect(() => {
     if (isNewMessage || isInitialLoad) {
@@ -253,24 +276,6 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
     }
   }, [messages, isNewMessage, isInitialLoad]);
 
-  // // Send message function
-  // const sendMessage = async (content: string) => {
-  //   if (!content.trim() || !community?.resources?.[0]?.id) return;
-
-  //   const chatId = community.resources[0].id;
-
-  //   try {
-  //     await sendMessageMutation({
-  //       body: {
-  //         content,
-  //         chatId,
-  //       },
-  //     });
-  //   } catch (error) {
-  //     console.error("Error sending message:", error);
-  //     // Error is already handled by the useApi hook
-  //   }
-  // };
   return (
     <div className="h-full">
       <div className="bg-chatroom-background rounded-tr-xl rounded-br-xl flex-1 h-full flex flex-col">
@@ -342,7 +347,7 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
                     content={message.content}
                     sender={message.owner.name}
                     avatar={message.owner.image}
-                    title={message.title}
+                    title={message.title || ""}
                   />
                 ))}
               </div>
@@ -353,8 +358,9 @@ const Page = ({ params }: { params: { resourceId: string } }) => {
 
         <SendDocs
           isConnected={isConnected}
-          disabled={!community?.resources?.[0]?.id}
+          disabled={!community?.resources?.[0]?.id || isSendingMessage}
           communityId={resourceId}
+          handleSend={handleSend}
         />
       </div>
     </div>

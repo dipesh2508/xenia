@@ -34,56 +34,41 @@ interface SendMessageProps {
   isConnected?: boolean;
   disabled?: boolean;
   communityId?: string;
+  handleSend: (
+    message: string,
+    selectedFile: File,
+    communityId: string
+  ) => void;
 }
 
 const SendDocs = ({
   isConnected = true,
   disabled = false,
   communityId,
+  handleSend,
 }: SendMessageProps) => {
   const [message, setMessage] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { mutate: sendMessageMutation, isLoading: isSendingMessage } = useApi(
-    "/resources",
-    {
-      method: "POST",
-      onSuccess: (data) => {
-        toast.success("File sent successfully", {
-          description: "Your file has been uploaded and shared.",
-        });
-        setMessage("");
-        setSelectedFile(null);
-      },
-      onError: (error) => {
-        toast.error("Failed to send file", {
-          description: error.message,
-        });
-      },
-    }
-  );
-
-  const handleSend = async () => {
+  const onSubmit = async () => {
     if ((!message.trim() && !selectedFile) || disabled || !isConnected) return;
-
-    try {
-      const formData = new FormData();
-      formData.append("title", message || "");
-      formData.append("communityId", communityId || "");
-      if (selectedFile) {
-        formData.append("file", selectedFile);
-      }
-
-      await sendMessageMutation({
-        body: formData,
-        // headers: {
-        //   "Content-Type": "multipart/form-data",
-        // },
+    if (!communityId) {
+      toast.error("Community ID is required", {
+        description: "Please provide a valid community ID.",
       });
-    } catch (error) {
-      console.error("Error sending file:", error);
+      return;
     }
+    if (!selectedFile) {
+      toast.error("File is required", {
+        description: "Please select a file to upload.",
+      });
+      return;
+    }
+
+    await handleSend(message, selectedFile as File, communityId as string);
+    setMessage("");
+    setSelectedFile(null);
   };
 
   const handleKeyDown = (
@@ -91,7 +76,7 @@ const SendDocs = ({
   ) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      onSubmit();
     }
   };
 
@@ -135,7 +120,6 @@ const SendDocs = ({
               size="icon"
               className="h-6 w-6"
               onClick={removeSelectedFile}
-              disabled={isSendingMessage} // Disable remove button
             >
               <X className="h-4 w-4" />
             </Button>
@@ -150,7 +134,6 @@ const SendDocs = ({
               className="hidden"
               onChange={handleFileChange}
               accept={ACCEPTED_FILE_TYPES.join(",")}
-              disabled={isSendingMessage} // Disable file input
             />
 
             <Button
@@ -158,7 +141,7 @@ const SendDocs = ({
               variant="ghost"
               className="h-10 w-10 hover:bg-chatroom-accent/20 transition-all duration-200 rounded-full"
               onClick={triggerFileUpload}
-              disabled={disabled || !isConnected || isSendingMessage} // Disable upload button
+              disabled={disabled || !isConnected} // Disable upload button
             >
               <FilePlus2 className="text-indigo-950 text-sm" />
             </Button>
@@ -169,19 +152,16 @@ const SendDocs = ({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={disabled || isSendingMessage} // Disable input
+              disabled={disabled} // Disable input
             />
           </div>
 
           <Button
             size="icon"
             className="rounded-full h-10 w-10 bg-chatroom-accent hover:bg-chatroom-accent/90 transition-all duration-200 flex-shrink-0 shadow-sm hover:shadow-md"
-            onClick={handleSend}
+            onClick={onSubmit}
             disabled={
-              (!message.trim() && !selectedFile) ||
-              disabled ||
-              !isConnected ||
-              isSendingMessage // Disable send button
+              (!message.trim() && !selectedFile) || disabled || !isConnected
             }
           >
             <SendHorizontal className="h-5 w-5" />
