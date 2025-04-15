@@ -520,3 +520,32 @@ export const getUserCommunities = async (
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+export const checkMembership = async (req: any, res: Response): Promise<void> => {
+  try {
+    const { communityId } = req.params;
+    const userId = req.user.id;
+
+    if (!communityId) {
+      res.status(400).json({ message: "Community ID is required" });
+      return;
+    }
+
+    console.log("Checking membership for user:", userId, "in community:", communityId);
+
+    // Check if user is a member of the community
+    const membership = await prisma.communitiesOnUsers.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId,
+        },
+      },
+    });
+
+    res.status(200).json({ isMember: !!membership });
+  } catch (error) {
+    console.error("Check membership error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};

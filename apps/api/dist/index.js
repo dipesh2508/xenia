@@ -807,6 +807,29 @@ var getUserCommunities = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+var checkMembership = async (req, res) => {
+  try {
+    const { communityId } = req.params;
+    const userId = req.user.id;
+    if (!communityId) {
+      res.status(400).json({ message: "Community ID is required" });
+      return;
+    }
+    console.log("Checking membership for user:", userId, "in community:", communityId);
+    const membership = await prisma.communitiesOnUsers.findUnique({
+      where: {
+        communityId_userId: {
+          communityId,
+          userId
+        }
+      }
+    });
+    res.status(200).json({ isMember: !!membership });
+  } catch (error) {
+    console.error("Check membership error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 // src/routes/community.route.ts
 var router2 = express5__default.default.Router();
@@ -819,6 +842,7 @@ router2.delete("/:id", isLoggedIn, deleteCommunity);
 router2.post("/:id/join", isLoggedIn, joinCommunity);
 router2.post("/:id/leave", isLoggedIn, leaveCommunity);
 router2.get("/:id/members", getCommunityMembers);
+router2.get("/:communityId/membership", isLoggedIn, checkMembership);
 var community_route_default = router2;
 var prisma2 = new client.PrismaClient();
 
@@ -982,6 +1006,35 @@ var deleteChat = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+// src/services/canvas.service.ts
+var canvasData = {};
+var initCanvasService = (io2) => {
+  io2.on("connection", (socket) => {
+    console.log("User connected to canvas:", socket.id);
+    socket.on("join:canvas", (communityId) => {
+      socket.join(`canvas:${communityId}`);
+      console.log(`User ${socket.id} joined canvas:${communityId}`);
+      if (canvasData[communityId]) {
+        socket.emit("canvas:data", canvasData[communityId]);
+      }
+    });
+    socket.on("leave:canvas", (communityId) => {
+      socket.leave(`canvas:${communityId}`);
+      console.log(`User ${socket.id} left canvas:${communityId}`);
+    });
+    socket.on("canvas:update", (data) => {
+      const { communityId, elements } = data;
+      canvasData[communityId] = elements;
+      socket.to(`canvas:${communityId}`).emit("canvas:update", elements);
+    });
+    socket.on("disconnect", () => {
+      console.log("User disconnected from canvas:", socket.id);
+    });
+  });
+};
+
+// src/services/socket.ts
 var io;
 var authenticateSocket = async (socket, next) => {
   try {
@@ -1042,6 +1095,7 @@ var initSocketServer = (server2) => {
     process.env.NODE_ENV === "development" ? "http://localhost:3000" : process.env.FRONTEND_URL || "https://xenia-web.vercel.app"
   );
   io.use(authenticateSocket);
+  initCanvasService(io);
   io.on("connection", (socket) => {
     console.log(`User connected: ${socket.user?.id}`);
     socket.on("joinRoom", (roomId) => {

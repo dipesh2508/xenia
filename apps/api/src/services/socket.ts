@@ -2,6 +2,7 @@ import { Server as HttpServer } from 'http';
 import { Server, Socket } from 'socket.io';
 import { verify } from 'jsonwebtoken';
 import { prisma } from '@/utils/prisma';
+import { initCanvasService } from './canvas.service';
 
 let io: Server;
 
@@ -90,6 +91,9 @@ export const initSocketServer = (server: HttpServer): void => {
 
   // Apply authentication middleware
   io.use(authenticateSocket);
+
+  // Initialize canvas service
+  initCanvasService(io);
 
   io.on('connection', (socket: Socket) => {
     console.log(`User connected: ${(socket as any).user?.id}`);
