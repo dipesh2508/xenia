@@ -9,14 +9,17 @@ const activeUsers: Record<string, Map<string, { id: string; name: string; cursor
 
 export const initCanvasService = (io: Server) => {
   io.on("connection", (socket: Socket) => {
-    console.log("User connected to canvas:", socket.id);
     const user = (socket as any).user;
 
     // Handle joining a community canvas
     socket.on("join:canvas", (communityId: string) => {
       const canvasRoom = `canvas:${communityId}`;
       socket.join(canvasRoom);
-      console.log(`User ${user?.name || socket.id} joined ${canvasRoom}`);
+      
+      // Make sure we have user info, even if it's a guest
+      const userName = user?.name || `Guest-${socket.id.substring(0, 5)}`;
+      // Use socket.id as the user ID for proper cursor tracking
+      const userId = socket.id;
 
       // Initialize the active users map for this community if it doesn't exist
       if (!activeUsers[communityId]) {
@@ -25,8 +28,8 @@ export const initCanvasService = (io: Server) => {
 
       // Add user to active users
       const userData = {
-        id: user?.id || socket.id,
-        name: user?.name || `Guest-${socket.id.substring(0, 5)}`,
+        id: userId, // Using socket.id for tracking
+        name: userName,
       };
       
       activeUsers[communityId].set(socket.id, userData);
@@ -37,7 +40,8 @@ export const initCanvasService = (io: Server) => {
       }
 
       // Send the current active users list to the new user
-      socket.emit("canvas:users", Array.from(activeUsers[communityId].values()));
+      const usersList = Array.from(activeUsers[communityId].values());
+      socket.emit("canvas:users", usersList);
 
       // Broadcast to other users that a new user has joined
       socket.to(canvasRoom).emit("canvas:user-joined", userData);
@@ -47,14 +51,15 @@ export const initCanvasService = (io: Server) => {
     socket.on("leave:canvas", (communityId: string) => {
       const canvasRoom = `canvas:${communityId}`;
       socket.leave(canvasRoom);
-      console.log(`User ${user?.name || socket.id} left ${canvasRoom}`);
+      
+      const userId = socket.id;
 
       // Remove user from active users
       if (activeUsers[communityId]) {
         activeUsers[communityId].delete(socket.id);
 
         // Broadcast to other users that this user has left
-        socket.to(canvasRoom).emit("canvas:user-left", { id: user?.id || socket.id });
+        socket.to(canvasRoom).emit("canvas:user-left", { id: userId });
       }
     });
 
@@ -90,8 +95,6 @@ export const initCanvasService = (io: Server) => {
 
     // Handle disconnection
     socket.on("disconnect", () => {
-      console.log(`User disconnected from canvas: ${user?.name || socket.id}`);
-      
       // Remove the user from all active canvases they were part of
       Object.keys(activeUsers).forEach(communityId => {
         if (activeUsers[communityId]?.has(socket.id)) {

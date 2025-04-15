@@ -274,6 +274,32 @@ var deleteUser = async (req, res) => {
     });
   }
 };
+var getCurrentUser = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        image: true
+      }
+    });
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+    res.status(200).json(user);
+  } catch (error) {
+    console.error("Get current user error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 var isLoggedIn = async (req, res, next) => {
   const token = req.cookies.token;
   if (!token) {
@@ -336,6 +362,7 @@ router.route("/login").post(userLogin);
 router.route("/logout").post(logout);
 router.route("/checkAuth").get(isLoggedIn, checkAuth);
 router.route("/:id").delete(isLoggedIn, deleteUser);
+router.get("/me", isLoggedIn, getCurrentUser);
 var user_route_default = router;
 cloudinary.v2.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -1009,19 +1036,52 @@ var deleteChat = async (req, res) => {
 
 // src/services/canvas.service.ts
 var canvasData = {};
+var activeUsers = {};
 var initCanvasService = (io2) => {
   io2.on("connection", (socket) => {
-    console.log("User connected to canvas:", socket.id);
+    const user = socket.user;
     socket.on("join:canvas", (communityId) => {
-      socket.join(`canvas:${communityId}`);
-      console.log(`User ${socket.id} joined canvas:${communityId}`);
+      const canvasRoom = `canvas:${communityId}`;
+      socket.join(canvasRoom);
+      const userName = user?.name || `Guest-${socket.id.substring(0, 5)}`;
+      const userId = socket.id;
+      if (!activeUsers[communityId]) {
+        activeUsers[communityId] = /* @__PURE__ */ new Map();
+      }
+      const userData = {
+        id: userId,
+        // Using socket.id for tracking
+        name: userName
+      };
+      activeUsers[communityId].set(socket.id, userData);
       if (canvasData[communityId]) {
         socket.emit("canvas:data", canvasData[communityId]);
       }
+      const usersList = Array.from(activeUsers[communityId].values());
+      socket.emit("canvas:users", usersList);
+      socket.to(canvasRoom).emit("canvas:user-joined", userData);
     });
     socket.on("leave:canvas", (communityId) => {
-      socket.leave(`canvas:${communityId}`);
-      console.log(`User ${socket.id} left canvas:${communityId}`);
+      const canvasRoom = `canvas:${communityId}`;
+      socket.leave(canvasRoom);
+      const userId = socket.id;
+      if (activeUsers[communityId]) {
+        activeUsers[communityId].delete(socket.id);
+        socket.to(canvasRoom).emit("canvas:user-left", { id: userId });
+      }
+    });
+    socket.on("canvas:cursor-position", (data) => {
+      const { communityId, x, y } = data;
+      if (activeUsers[communityId] && activeUsers[communityId].has(socket.id)) {
+        const userData = activeUsers[communityId].get(socket.id);
+        userData.cursor = { x, y };
+        activeUsers[communityId].set(socket.id, userData);
+        socket.to(`canvas:${communityId}`).emit("canvas:cursor-update", {
+          id: userData.id,
+          name: userData.name,
+          cursor: { x, y }
+        });
+      }
     });
     socket.on("canvas:update", (data) => {
       const { communityId, elements } = data;
@@ -1029,7 +1089,15 @@ var initCanvasService = (io2) => {
       socket.to(`canvas:${communityId}`).emit("canvas:update", elements);
     });
     socket.on("disconnect", () => {
-      console.log("User disconnected from canvas:", socket.id);
+      Object.keys(activeUsers).forEach((communityId) => {
+        if (activeUsers[communityId]?.has(socket.id)) {
+          const userData = activeUsers[communityId].get(socket.id);
+          activeUsers[communityId].delete(socket.id);
+          if (userData) {
+            socket.to(`canvas:${communityId}`).emit("canvas:user-left", { id: userData.id });
+          }
+        }
+      });
     });
   });
 };
