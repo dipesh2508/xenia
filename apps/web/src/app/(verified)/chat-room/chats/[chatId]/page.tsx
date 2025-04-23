@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/ui/tabs";
 import {
   Avatar,
   AvatarFallback,
@@ -16,6 +15,7 @@ import { useSocket } from "@/hooks/useSocket";
 import { toast } from "sonner";
 import { useUserDetails } from "@/hooks/useUserDetails";
 import { Button } from "@repo/ui/components/ui/button";
+import NavigationTabs from "@/components/navigation/NavigationTabs";
 
 interface Message {
   id: string;
@@ -244,13 +244,10 @@ const Page = ({ params }: { params: { chatId: string } }) => {
               onRetry={connect}
             />
 
-            <Tabs defaultValue="message">
-              <TabsList className="bg-chatroom-accent/10">
-                <TabsTrigger value="message">Message</TabsTrigger>
-                <TabsTrigger value="canvas">Canvas</TabsTrigger>
-                <TabsTrigger value="Docs">Doc Room</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <NavigationTabs 
+              defaultValue="message" 
+              id={chatId}
+            />
           </div>
         </header>
 

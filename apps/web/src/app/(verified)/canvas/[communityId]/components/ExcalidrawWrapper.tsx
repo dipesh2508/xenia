@@ -291,7 +291,7 @@ const ExcalidrawWrapper: React.FC<ExcalidrawWrapperProps> = ({ communityId }) =>
   };
 
   return (
-    <div className="relative flex flex-col h-[90vh] w-full">
+    <div className="relative flex flex-col h-[85vh] w-full">
       {/* Active users display */}
       <div className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 border-b dark:border-gray-700">
         <div className="text-sm font-medium">Active Users ({activeUsers.length}):</div>

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useApi } from "@/hooks/useApi";
 import { useEffect, useState } from "react";
+import NavigationTabs from "@/components/navigation/NavigationTabs";
 
 const ExcalidrawWrapper = dynamic(
   () => import("./components/ExcalidrawWrapper"),
@@ -96,6 +97,11 @@ export default function CanvasPage() {
             </p>
           )}
         </div>
+        
+        <NavigationTabs 
+          id={communityId}
+          defaultValue="canvas" 
+        />
       </header>
       
       <div className="flex-grow overflow-hidden">
