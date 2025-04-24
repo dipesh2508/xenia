@@ -9,9 +9,11 @@ import {
   joinCommunity,
   leaveCommunity,
   getCommunityMembers,
-  getUserCommunities
+  getUserCommunities,
+  checkMembership
 } from "@/controllers/community.controller";
 import { isLoggedIn } from "@/middleware/isUserLoggedIn";
+import { isCommunityMember } from "@/middleware/isCommunityMember";
 
 const router = express.Router();
 
@@ -24,5 +26,6 @@ router.delete("/:id", isLoggedIn, deleteCommunity);
 router.post("/:id/join", isLoggedIn, joinCommunity);
 router.post("/:id/leave", isLoggedIn, leaveCommunity);
 router.get("/:id/members", getCommunityMembers);
+router.get("/:communityId/membership", isLoggedIn, checkMembership);
 
 export default router;
